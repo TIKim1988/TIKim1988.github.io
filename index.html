@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사람이 읽고 기계가 실행하는 테스트 케이스 만들기 · Taeik's Dev Log</title>
+<meta name="description" content="test-automation-skeleton — 사람이 읽는 테스트 시나리오가 그대로 자동화 스펙이 되는 구조를 만들고 고도화한 기록. SSH 삽질부터 무결성 검사까지.">
+<style>
+  :root{
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#26303d; --text:#e6edf3; --muted:#9aa7b4;
+    --accent:#58a6ff; --accent2:#7ee787; --warn:#e3b341; --danger:#ff7b72;
+    --code:#0b1017;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",Roboto,"Apple SD Gothic Neo",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);line-height:1.75;font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  header.hero{
+    border-bottom:1px solid var(--border);
+    background:radial-gradient(1200px 400px at 20% -10%,rgba(88,166,255,.14),transparent 60%),var(--bg);
+    padding:72px 0 44px;
+  }
+  .kicker{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+    color:var(--accent2);background:rgba(126,231,135,.08);
+    border:1px solid rgba(126,231,135,.25);border-radius:999px;padding:5px 12px;margin-bottom:20px;
+  }
+  h1{font-size:34px;line-height:1.28;margin:0 0 16px;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:18px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:26px;color:var(--muted);font-size:14px;font-family:var(--mono)}
+  .meta b{color:var(--text);font-weight:600}
+  main{padding:8px 0 60px}
+  article h2{font-size:24px;margin:52px 0 14px;letter-spacing:-.01em}
+  article h2 .n{font-family:var(--mono);color:var(--accent);font-size:16px;margin-right:10px}
+  article h3{font-size:18px;margin:30px 0 8px;color:var(--text)}
+  p{margin:14px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  strong{color:#fff}
+  .tldr{
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);
+    border-radius:10px;padding:18px 20px;margin:28px 0;
+  }
+  .tldr b{color:var(--accent2)}
+  ul.clean{padding-left:20px;margin:14px 0}
+  ul.clean li{margin:8px 0}
+  pre{
+    background:var(--code);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.6;
+    margin:18px 0;
+  }
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface2);border:1px solid var(--border);
+    padding:1.5px 6px;border-radius:5px;color:#d7e2ee}
+  pre code{background:none;border:none;padding:0;color:#c9d5e1}
+  .tok-c{color:#6b7683}      /* comment */
+  .tok-k{color:var(--danger)} /* keyword */
+  .tok-s{color:var(--accent2)} /* string */
+  .tok-a{color:var(--accent)}  /* attr/key */
+  .diagram{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:24px;margin:26px 0;font-family:var(--mono);font-size:13px;color:var(--muted);
+    line-height:1.5;overflow-x:auto;
+  }
+  .stack{display:grid;gap:10px}
+  .layer{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface2)}
+  .layer .t{color:var(--text);font-family:var(--sans);font-weight:600;font-size:14px}
+  .layer .d{font-size:12.5px;margin-top:3px}
+  .layer.own{border-color:rgba(88,166,255,.5)}
+  .layer.ext{border-style:dashed;opacity:.85}
+  .callout{
+    border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:22px 0;background:var(--surface);
+  }
+  .callout.warn{border-left:3px solid var(--warn)}
+  .callout.warn .h{color:var(--warn)}
+  .callout .h{font-weight:700;display:block;margin-bottom:6px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+  .steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px dashed var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:0;top:9px;
+    width:28px;height:28px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent);font-family:var(--mono);font-size:13px;display:grid;place-items:center;
+  }
+  hr{border:none;border-top:1px solid var(--border);margin:44px 0}
+  .quote{border-left:3px solid var(--accent);padding:4px 0 4px 18px;color:var(--muted);font-style:italic;margin:22px 0}
+  footer{border-top:1px solid var(--border);padding:34px 0 60px;color:var(--muted);font-size:14px}
+  footer a{color:var(--accent)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--border);
+    border-radius:999px;padding:3px 10px;background:var(--surface)}
+  @media(max-width:600px){h1{font-size:27px}body{font-size:16px}article h2{font-size:21px}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">DEV LOG · 테스트 자동화</span>
+    <h1>사람이 읽는 문서가 그대로 기계의 실행 스펙이 되게 만들기</h1>
+    <p class="lede">테스트 케이스를 "문서 따로, 코드 따로"에서 벗어나 하나로 합친 이야기. 구조를 어떻게 잡았고, SSH 삽질부터 무결성 검사까지 어디서 넘어졌는지 기록.</p>
+    <div class="meta">
+      <span>✍️ <b>Taeik</b></span>
+      <span>📅 2026-07-13</span>
+      <span>📦 <b>test-automation-skeleton</b></span>
+      <span>⏱️ 약 6분</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+<article>
+
+  <div class="tldr">
+    <p style="margin:0"><b>요약 먼저.</b> 테스트 케이스를 사람이 읽는 YAML 시나리오로 쓰되, 그 파일을 자동화 프로젝트가 <em>그대로 실행 스펙으로 읽게</em> 만들었다. 화면 요소(셀렉터)·데이터(픽스처)·시나리오를 3계층으로 분리하고, 커밋 전에 <code>validate_testcases.py</code>로 정합성을 강제한다. 지금은 홈 화면 커버리지를 배너·상품·푸터까지 넓히는 중. 가장 크게 넘어진 곳은 코드가 아니라 <strong>SSH 인증 삽질</strong>이었다.</p>
+  </div>
+
+  <h2><span class="n">01</span>왜 이걸 만들었나</h2>
+  <p>테스트 케이스는 보통 두 곳에 따로 산다. 하나는 사람이 읽는 문서(스프레드시트, 위키), 하나는 자동화 코드(Playwright 스크립트). 문제는 이 둘이 <strong>항상 어긋난다</strong>는 거다. 화면이 바뀌면 코드는 고쳐도 문서는 방치되고, 문서를 고쳐도 코드에 반영이 안 된다. 결국 "테스트 문서"는 아무도 안 믿는 종이가 된다.</p>
+  <p>그래서 전제를 뒤집었다. <strong>문서를 실행 가능한 스펙으로 만들면, 어긋날 수가 없다.</strong> 사람이 읽는 시나리오 파일 하나가 곧 자동화가 실행하는 입력이 되도록. 이게 <code>test-automation-skeleton</code> 저장소의 출발점이다.</p>
+
+  <div class="quote">"문서와 코드를 동기화하려 애쓰지 말고, 애초에 하나로 두자."</div>
+
+  <h2><span class="n">02</span>구조 — 3계층으로 쪼갠 이유</h2>
+  <p>핵심 결정은 "무엇이 바뀌면 어디만 고치면 되는가"를 기준으로 파일을 나눈 것이다. 화면 요소, 테스트 데이터, 시나리오는 <strong>바뀌는 빈도와 이유가 다르다.</strong> 그래서 계층을 분리했다.</p>
+
+  <div class="diagram">
+    <div class="stack">
+      <div class="layer own">
+        <div class="t">testcases/**/*.yaml</div>
+        <div class="d">사람이 읽는 테스트 시나리오. 동시에 자동화가 그대로 실행하는 스펙. (내 소유)</div>
+      </div>
+      <div class="layer own">
+        <div class="t">selectors/*.yaml</div>
+        <div class="d">화면 요소 이름 → 실제 role / testId / css 매핑. (내 소유)</div>
+      </div>
+      <div class="layer own">
+        <div class="t">fixtures/*.yaml</div>
+        <div class="d">테스트에 쓰는 실제 데이터 (계정 등). (내 소유)</div>
+      </div>
+      <div class="layer ext">
+        <div class="t">automation/ &nbsp;— 다른 프로젝트 소유, 여기선 안 건드림</div>
+        <div class="d">위 3계층을 읽어서 실제로 브라우저를 굴리는 Playwright 쪽.</div>
+      </div>
+    </div>
+  </div>
+
+  <p>포인트는 <strong>시나리오에 CSS나 role을 직접 쓰지 않는다</strong>는 규칙이다. 테스트 케이스는 <code>login_button</code> 같은 <em>이름</em>으로만 요소를 참조하고, 그 이름이 실제로 무엇인지는 <code>selectors</code>가 안다. 그래서 버튼의 클래스명이 바뀌어도 고칠 곳은 셀렉터 파일 한 줄뿐이다. 시나리오 수십 개는 그대로 산다.</p>
+
+  <h3>테스트 케이스는 이렇게 생겼다</h3>
+  <pre><code><span class="tok-a">id</span>: LOGIN-001
+<span class="tok-a">title</span>: <span class="tok-s">로그인 성공</span>
+<span class="tok-a">last_verified</span>: 2026-07-13
+<span class="tok-a">steps</span>:
+  - <span class="tok-a">action</span>: navigate
+    <span class="tok-a">target</span>: login_page
+  - <span class="tok-a">action</span>: fill
+    <span class="tok-a">target</span>: email_input
+    <span class="tok-a">value</span>: <span class="tok-s">"{{ fixtures.user.email }}"</span>
+  - <span class="tok-a">action</span>: click
+    <span class="tok-a">target</span>: login_button
+  - <span class="tok-a">action</span>: assert_visible
+    <span class="tok-a">target</span>: dashboard_header</code></pre>
+  <p><code>action</code>은 정해진 어휘만 쓴다 — <code>navigate, click, fill, select, check, uncheck, assert_visible, assert_hidden, assert_text, wait, custom</code>. 파일 업로드나 멀티탭처럼 복잡한 동작은 <code>action: custom</code> + 이름표를 달아 자동화 쪽에 "이 이름으로 이런 동작 구현해달라"고 넘긴다. 구현은 그쪽 몫, 스펙 정의는 내 몫으로 경계를 그었다.</p>
+
+  <h2><span class="n">03</span>가장 중요한 장치 — 커밋을 막는 검증기</h2>
+  <p>구조를 아무리 예쁘게 잡아도, <strong>사람이 손으로 쓰는 YAML은 반드시 깨진다.</strong> 셀렉터에 없는 요소를 참조하거나, 필수 필드를 빼먹거나, 오타 난 <code>action</code>을 쓴다. 그래서 <code>validate_testcases.py</code>가 커밋 전에 이걸 전부 잡는다.</p>
+  <ul class="clean">
+    <li><strong>정합성</strong> — 시나리오가 참조하는 모든 <code>target</code>이 <code>selectors</code>에 실제로 존재하는지 대조.</li>
+    <li><strong>필수 필드</strong> — <code>id / title / steps</code>가 다 있는지.</li>
+    <li><strong>어휘 검사</strong> — 정해진 <code>action</code> 목록 밖의 값이 있으면 오류.</li>
+    <li><strong>신선도(stale) 경고</strong> — <code>last_verified</code>가 30일 넘게 지난 케이스를 따로 알려준다.</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="h">이 stale 목록이 사실상 "할 일 우선순위"다</span>
+    30일 넘은 케이스 = 실제 화면을 다시 눈으로 확인해야 하는 대상. 검증기가 매번 이 목록을 뱉으니, 다음에 뭘 점검할지 고민할 필요가 없다. 오류가 하나라도 있으면 <code>exit 1</code> — 깨진 채로는 커밋이 안 넘어간다.</p>
+  </div>
+
+  <p>루틴 자체를 못박아 뒀다:</p>
+  <ol class="steps">
+    <li>실제 앱 화면을 Claude in Chrome / computer-use로 스크린샷·DOM 확인</li>
+    <li>기존 셀렉터·시나리오와 달라진 점 찾기</li>
+    <li>요소만 바뀌었으면 → <code>selectors</code> 해당 줄만 수정</li>
+    <li>플로우가 바뀌었으면 → 해당 케이스의 <code>steps</code> 수정</li>
+    <li><code>last_verified</code>를 오늘 날짜로 갱신</li>
+    <li><code>python3 validate_testcases.py</code> 통과 확인 후에만 commit &amp; push</li>
+  </ol>
+
+  <h2><span class="n">04</span>시행착오 — 코드가 아니라 인증에서 넘어졌다</h2>
+  <p>구조나 검증 로직은 오히려 순탄했다. 진짜 시간을 잡아먹은 건 <strong>저장소에 접속하는 것</strong>, 즉 GitHub SSH 인증이었다.</p>
+
+  <h3>삽질 1 — 도구가 아예 없었다</h3>
+  <p>샌드박스에서 SSH를 쓰려는데 <code>openssh-client</code>가 안 깔려 있었다. <code>apt-get install</code>로 해결. 사소하지만 "환경이 당연히 갖춰져 있겠지"라는 가정이 처음부터 틀렸다는 신호였다.</p>
+
+  <h3>삽질 2 — 있는 키를 두고 새 키를 만들 뻔했다</h3>
+  <p>여기가 진짜 교훈. 인증이 막히자 셋업 스크립트가 <strong>냉큼 새 SSH 키를 생성</strong>하고 "이 공개키를 GitHub에 등록하세요"로 넘어갔다. 그런데 사실 SSH 접근은 <em>이미 설정돼 있었다.</em> 등록된 지문은:</p>
+  <pre><code><span class="tok-c"># 이미 GitHub에 등록돼 있던 키</span>
+SHA256:W9V18Bdai6IUIfgOdNSKTVQmUtMipN/DBtuHINJDCwQ</code></pre>
+  <p>새 키를 만드는 건 문제를 푸는 게 아니라 <strong>새 문제를 하나 더 만드는 것</strong>이었다. 등록 페이지를 열고, 키를 붙여넣고, 확인하고… 이미 되던 걸 처음부터 다시 하는 셈.</p>
+
+  <div class="callout">
+    <span class="h">여기서 원칙 하나를 박제했다 — "만들기 전에 확인한다"</span>
+    인증이 막히면 <strong>가장 먼저 기존 키의 지문이 GitHub에 등록된 것과 일치하는지부터 대조</strong>한다. 새 키 생성은 최후의 수단. 이 원칙 덕에 다음부터는 "일단 키부터 만들자"는 반사행동을 멈추게 됐다.
+  </div>
+
+  <h3>삽질 3 — 프록시 위에 얹기</h3>
+  <p>샌드박스가 이미 <code>GIT_SSH_COMMAND</code> 프록시를 깔아둔 경우가 있어서, 덮어쓰지 않고 그 위에 identity만 얹도록 셋업 스크립트를 고쳤다:</p>
+  <pre><code><span class="tok-k">export</span> GIT_SSH_COMMAND=<span class="tok-s">"${GIT_SSH_COMMAND:-ssh} -i $IDENTITY -o IdentitiesOnly=yes -o StrictHostKeyChecking=no"</span></code></pre>
+  <p>기존 환경을 존중하면서 필요한 것만 추가하는 방식. 환경을 통째로 내 방식대로 갈아엎으려다 깨진 경험의 반작용이다.</p>
+
+  <h2><span class="n">05</span>지금 고도화하는 방향</h2>
+  <p>초기엔 홈 화면의 <strong>헤더 + 카테고리</strong> 섹션만 커버했다. 지금은 커버리지를 넓히는 중이다:</p>
+  <ul class="clean">
+    <li><strong>배너 섹션</strong> — 캐러셀·프로모션 배너의 노출/전환 확인</li>
+    <li><strong>상품 섹션</strong> — 상품 카드 렌더링, 목록 정합성</li>
+    <li><strong>푸터 섹션</strong> — 링크·정보 영역 검증</li>
+  </ul>
+  <p>넓힐수록 앞서 만든 3계층 분리와 검증기가 빛을 본다. 새 섹션을 추가한다는 건 대부분 <code>selectors</code>에 요소 몇 개 등록하고 시나리오를 얹는 일이라, 화면이 흔들려도 유지보수 비용이 선형으로만 늘어난다.</p>
+
+  <div class="tldr">
+    <p style="margin:0"><b>배운 것 세 줄.</b> ① 문서와 코드를 동기화하려 하지 말고 하나로 둬라. ② 사람이 쓰는 파일은 반드시 깨지니, 커밋을 막는 자동 검증을 먼저 깔아라. ③ 막히면 새로 만들기 전에 이미 있는 걸 확인하라 — 대부분의 삽질은 "확인"을 건너뛴 데서 나온다.</p>
+  </div>
+
+  <hr>
+  <p style="color:var(--muted);font-size:15px">다음 글에서는 <code>action: custom</code> 케이스를 자동화 프로젝트와 어떻게 주고받는지, 그리고 stale 경고를 실제 점검 루틴으로 돌리는 방법을 다룰 예정이다.</p>
+
+  <div class="tags">
+    <span class="tag">#test-automation</span>
+    <span class="tag">#yaml</span>
+    <span class="tag">#playwright</span>
+    <span class="tag">#ci</span>
+    <span class="tag">#devlog</span>
+  </div>
+
+</article>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Taeik's Dev Log · 테스트 자동화 기록</p>
+    <p>저장소: <b>TIKim1988 / test-automation-skeleton</b> (private) · 이 글은 GitHub Pages로 게시됨</p>
+  </div>
+</footer>
+
+</body>
+</html>
