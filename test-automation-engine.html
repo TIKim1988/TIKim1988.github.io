@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="test-automation-skeleton — 사람이 쓴 YAML 시나리오를 실제 브라우저 동작으로 바꾸는 실행 엔진을 만들고, demo-app에서 굴려보고 실제 앱에 붙이기까지. Playwright 설치·flaky·경계 판단에서 넘어진 기록.">
+<title>YAML을 브라우저 클릭으로 바꾸는 엔진 만들기 · Taeik's Dev Log</title>
+<style>
+  :root{
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#26303d; --text:#e6edf3; --muted:#9aa7b4;
+    --accent:#58a6ff; --accent2:#7ee787; --warn:#e3b341; --danger:#ff7b72;
+    --code:#0b1017;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",Roboto,"Apple SD Gothic Neo",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);line-height:1.75;font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  header.hero{
+    border-bottom:1px solid var(--border);
+    background:radial-gradient(1200px 400px at 20% -10%,rgba(88,166,255,.14),transparent 60%),var(--bg);
+    padding:72px 0 44px;
+  }
+  .kicker{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+    color:var(--accent2);background:rgba(126,231,135,.08);
+    border:1px solid rgba(126,231,135,.25);border-radius:999px;padding:5px 12px;margin-bottom:20px;
+  }
+  h1{font-size:34px;line-height:1.28;margin:0 0 16px;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:18px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:26px;color:var(--muted);font-size:14px;font-family:var(--mono)}
+  .meta b{color:var(--text);font-weight:600}
+  main{padding:8px 0 60px}
+  article h2{font-size:24px;margin:52px 0 14px;letter-spacing:-.01em}
+  article h2 .n{font-family:var(--mono);color:var(--accent);font-size:16px;margin-right:10px}
+  article h3{font-size:18px;margin:30px 0 8px;color:var(--text)}
+  p{margin:14px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  strong{color:#fff}
+  .tldr{
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);
+    border-radius:10px;padding:18px 20px;margin:28px 0;
+  }
+  .tldr b{color:var(--accent2)}
+  ul.clean{padding-left:20px;margin:14px 0}
+  ul.clean li{margin:8px 0}
+  pre{
+    background:var(--code);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.6;
+    margin:18px 0;
+  }
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface2);border:1px solid var(--border);
+    padding:1.5px 6px;border-radius:5px;color:#d7e2ee}
+  pre code{background:none;border:none;padding:0;color:#c9d5e1}
+  .tok-c{color:#6b7683}      /* comment */
+  .tok-k{color:var(--danger)} /* keyword */
+  .tok-s{color:var(--accent2)} /* string */
+  .tok-a{color:var(--accent)}  /* attr/key */
+  .diagram{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:24px;margin:26px 0;font-family:var(--mono);font-size:13px;color:var(--muted);
+    line-height:1.5;overflow-x:auto;
+  }
+  .stack{display:grid;gap:10px}
+  .layer{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface2)}
+  .layer .t{color:var(--text);font-family:var(--sans);font-weight:600;font-size:14px}
+  .layer .d{font-size:12.5px;margin-top:3px}
+  .layer.own{border-color:rgba(88,166,255,.5)}
+  .layer.ext{border-style:dashed;opacity:.85}
+  .callout{
+    border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:22px 0;background:var(--surface);
+  }
+  .callout.warn{border-left:3px solid var(--warn)}
+  .callout.warn .h{color:var(--warn)}
+  .callout .h{font-weight:700;display:block;margin-bottom:6px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+  .steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px dashed var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:0;top:9px;
+    width:28px;height:28px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent);font-family:var(--mono);font-size:13px;display:grid;place-items:center;
+  }
+  hr{border:none;border-top:1px solid var(--border);margin:44px 0}
+  .quote{border-left:3px solid var(--accent);padding:4px 0 4px 18px;color:var(--muted);font-style:italic;margin:22px 0}
+  footer{border-top:1px solid var(--border);padding:34px 0 60px;color:var(--muted);font-size:14px}
+  footer a{color:var(--accent)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--border);
+    border-radius:999px;padding:3px 10px;background:var(--surface)}
+  @media(max-width:600px){h1{font-size:27px}body{font-size:16px}article h2{font-size:21px}}
+
+  /* --- 고정 LNB 사이드바 --- */
+  body{padding-left:260px}
+  .nav-toggle,.lnb-overlay,.lnb .close{display:none}
+  .lnb{position:fixed;top:0;left:0;height:100vh;width:260px;background:var(--surface);
+    border-right:1px solid var(--border);z-index:40;padding:28px 18px 40px;overflow-y:auto}
+  .lnb .brand{font-family:var(--mono);font-size:12.5px;color:var(--accent2);letter-spacing:.05em;margin-bottom:8px}
+  .lnb .home{display:block;color:var(--text);font-weight:600;margin-bottom:8px;font-size:17px}
+  .lnb .home:hover{text-decoration:none;color:var(--accent)}
+  .lnb .home.active{color:var(--accent)}
+  .lnb .folder{margin:22px 0 6px;font-size:12.5px;color:var(--muted);font-family:var(--mono);
+    display:flex;align-items:center;gap:7px}
+  .lnb ul{list-style:none;padding:0;margin:0}
+  .lnb li a{display:block;padding:9px 11px;border-radius:8px;color:var(--text);font-size:14px;line-height:1.45}
+  .lnb li a:hover{background:var(--surface2);text-decoration:none}
+  .lnb li a.active{background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.35);color:var(--accent)}
+  .lnb li .date{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  /* 모바일: 사이드바 접고 햄버거로 전환 */
+  @media(max-width:860px){
+    body{padding-left:0}
+    .nav-toggle{display:grid;position:fixed;top:14px;left:14px;z-index:50;width:44px;height:44px;border-radius:10px;
+      background:rgba(22,27,34,.9);backdrop-filter:blur(6px);border:1px solid var(--border);color:var(--text);
+      cursor:pointer;place-items:center;font-size:18px;line-height:1}
+    .nav-toggle:hover{border-color:var(--accent);color:var(--accent)}
+    .lnb{transform:translateX(-100%);transition:transform .25s ease;z-index:70;width:280px;max-width:82vw}
+    .lnb.open{transform:none}
+    .lnb .close{display:block;position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);
+      font-size:22px;cursor:pointer;line-height:1}
+    .lnb .close:hover{color:var(--text)}
+    .lnb-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;visibility:hidden;
+      transition:opacity .2s;z-index:60}
+    .lnb-overlay.open{opacity:1;visibility:visible}
+  }
+</style>
+</head>
+<body>
+
+<button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+<div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
+<nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
+  <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
+  <div class="brand">Taeik's Dev Log</div>
+  <a class="home" href="index.html">🏠 홈</a>
+
+  <div class="folder">📁 테스트케이스 관리 (TC)</div>
+  <ul>
+    <li><a href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
+  </ul>
+
+  <div class="folder">📁 자동화 엔진</div>
+  <ul>
+    <li><a class="active" href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">DEV LOG · 테스트 자동화</span>
+    <h1>YAML 한 줄을 브라우저 클릭으로 — 실행 엔진을 만들고 굴린 기록</h1>
+    <p class="lede">사람이 읽는 시나리오는 <a href="https://tikim1988.github.io/">지난 글</a>에서 만들었다. 이번엔 그 YAML을 <em>진짜 브라우저 동작</em>으로 바꾸는 인터프리터를 세우고, 가짜 화면에서 굴려보고, 실제 앱에 붙이기까지. 코드보다 설치·flaky·경계 판단에서 더 넘어졌다.</p>
+    <div class="meta">
+      <span>✍️ <b>Taeik</b></span>
+      <span>📅 2026-07-13</span>
+      <span>📦 <b>test-automation-skeleton</b></span>
+      <span>⏱️ 약 7분</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <article>
+
+      <div class="tldr">
+        <b>요약 먼저.</b> 사람이 쓴 YAML 시나리오를 읽어 Playwright 명령으로 번역하는 <strong>인터프리터</strong>를 만들었다. 스텝 어휘는 11개로 <em>고정</em>하고, 그걸로 못 담는 동작(파일 업로드·다중 탭 등)은 <code>action: custom</code>이라는 확장점 하나로 몰아 스펙 정의 프로젝트와 경계를 그었다. 개발은 <code>demo-app</code>이라는 가짜 화면 위에서 하고, 실제 앱엔 <code>baseURL</code>만 바꿔 붙인다. 정작 시간을 잡아먹은 건 인터프리터 로직이 아니라 <strong>Playwright 브라우저 설치, flaky 테스트, 그리고 "이 로직을 어디에 둘 것인가"라는 경계 판단</strong>이었다.
+      </div>
+
+      <h2><span class="n">01</span>이 프로젝트가 맡은 것 — 경계부터</h2>
+      <p>지난 글의 프로젝트는 <strong>스펙을 소유</strong>한다. 무엇을 테스트할지, 화면 요소를 뭐라 부를지(<code>testcases/</code>, <code>selectors/</code>, <code>fixtures/</code>)를 관리한다. 이 프로젝트는 그걸 <strong>실행</strong>한다. 같은 저장소 안에 살지만 소유 영역이 다르다.</p>
+      <p>가장 먼저 못 박은 규칙은 <strong>"이 프로젝트는 <code>testcases/selectors/fixtures</code>를 읽기만 한다"</strong>는 거였다. 실행하다 셀렉터가 틀린 걸 발견해도 내가 직접 고치지 않는다. 고칠 내용을 정리해서 스펙 쪽에 넘긴다. 경계를 흐리는 순간 "문서와 코드를 하나로 둔다"는 전제 자체가 무너지기 때문이다.</p>
+
+      <div class="diagram">
+        <div class="stack">
+          <div class="layer ext"><div class="t">testcases / selectors / fixtures &nbsp;— 읽기 전용</div><div class="d">스펙 소유 프로젝트가 관리. 여기선 입력으로만 받는다.</div></div>
+          <div class="layer own"><div class="t">automation/runner/interpreter.ts &nbsp;— 내 소유</div><div class="d">YAML 스텝 → Playwright 명령으로 번역하는 해석기.</div></div>
+          <div class="layer own"><div class="t">automation/steps/custom.ts &nbsp;— 내 소유</div><div class="d">기본 어휘로 못 담는 로직의 확장점.</div></div>
+          <div class="layer own"><div class="t">automation/tests/*.spec.ts &nbsp;— 내 소유</div><div class="d">인터프리터를 구동하는 Playwright 진입점.</div></div>
+        </div>
+      </div>
+
+      <h2><span class="n">02</span>인터프리터 — YAML을 Playwright로 번역하기</h2>
+      <p>핵심은 단순하다. 시나리오의 스텝 하나를 읽어 <code>action</code>을 보고, 그에 맞는 Playwright 호출로 바꾼다. 스텝의 <code>target</code>은 셀렉터 파일을 거쳐 실제 로케이터로 풀린다. 대략 이런 모양이다.</p>
+
+<pre><code><span class="tok-k">async function</span> runStep(page, step, sel, fx) {
+  <span class="tok-k">const</span> locator = () =&gt; page.locator(resolve(sel, step.target)); <span class="tok-c">// 이름 → 실제 셀렉터</span>
+  <span class="tok-k">switch</span> (step.action) {
+    <span class="tok-k">case</span> <span class="tok-s">"navigate"</span>:       <span class="tok-k">return</span> page.goto(resolve(sel, step.target));
+    <span class="tok-k">case</span> <span class="tok-s">"click"</span>:          <span class="tok-k">return</span> locator().click();
+    <span class="tok-k">case</span> <span class="tok-s">"fill"</span>:           <span class="tok-k">return</span> locator().fill(interpolate(step.value, fx));
+    <span class="tok-k">case</span> <span class="tok-s">"assert_visible"</span>: <span class="tok-k">return</span> expect(locator()).toBeVisible();
+    <span class="tok-k">case</span> <span class="tok-s">"assert_text"</span>:    <span class="tok-k">return</span> expect(locator()).toHaveText(step.value);
+    <span class="tok-c">// select / check / uncheck / assert_hidden / wait ...</span>
+    <span class="tok-k">case</span> <span class="tok-s">"custom"</span>:         <span class="tok-k">return</span> runCustom(step.name, { page, step, sel, fx });
+    <span class="tok-k">default</span>: <span class="tok-k">throw new</span> Error(<span class="tok-s">`알 수 없는 action: </span>${step.action}<span class="tok-s">`</span>);
+  }
+}</code></pre>
+
+      <p>어휘는 딱 11개로 고정했다 — <code>navigate</code>, <code>click</code>, <code>fill</code>, <code>select</code>, <code>check</code>, <code>uncheck</code>, <code>assert_visible</code>, <code>assert_hidden</code>, <code>assert_text</code>, <code>wait</code>, <code>custom</code>. <strong>어휘를 늘리고 싶은 유혹이 계속 온다.</strong> "hover도 넣을까, double_click도…" 하지만 어휘가 늘수록 스펙을 쓰는 사람이 외워야 할 게 늘고, 인터프리터의 <code>switch</code>도 비대해진다. 그래서 규칙을 세웠다 — <strong>기본 어휘는 "화면을 읽고 쓰는 최소 동작"까지만.</strong> 그 밖은 전부 다음 장의 <code>custom</code>으로.</p>
+
+      <h2><span class="n">03</span>못 담는 건 전부 custom.ts 하나로</h2>
+      <p>파일 업로드, 다운로드 검증, 다중 탭, 드래그 앤 드롭… 이런 건 <code>fill</code> 한 줄로 안 된다. 여기서 두 갈래 길이 있었다.</p>
+      <ul class="clean">
+        <li><strong>A안</strong> — 필요할 때마다 인터프리터에 <code>case</code>를 추가한다. 당장은 편하다.</li>
+        <li><strong>B안</strong> — 복잡한 동작은 전부 <code>action: custom</code> + 이름표로 받고, 구현은 <code>custom.ts</code>에 몰아둔다.</li>
+      </ul>
+      <p>B안을 택했다. 이유는 <strong>경계</strong> 때문이다. 스펙을 쓰는 사람은 "이런 동작이 필요하다"는 <em>이름</em>만 선언하면 된다. 실제로 그 이름이 무슨 짓을 하는지는 이 프로젝트의 몫이다.</p>
+
+<pre><code><span class="tok-c"># 스펙 쪽 YAML — "무엇이 필요한지"만 선언</span>
+<span class="tok-a">- action</span>: custom
+  <span class="tok-a">name</span>: upload_profile_image
+  <span class="tok-a">value</span>: <span class="tok-s">"fixtures/avatar.png"</span></code></pre>
+
+<pre><code><span class="tok-c">// custom.ts — "실제로 어떻게" 는 여기 몫</span>
+register(<span class="tok-s">"upload_profile_image"</span>, <span class="tok-k">async</span> ({ page, step }) =&gt; {
+  <span class="tok-k">const</span> [chooser] = <span class="tok-k">await</span> Promise.all([
+    page.waitForEvent(<span class="tok-s">"filechooser"</span>),
+    page.getByTestId(<span class="tok-s">"avatar-upload"</span>).click(),
+  ]);
+  <span class="tok-k">await</span> chooser.setFiles(step.value);
+});</code></pre>
+
+      <p>덕분에 스펙은 얇게 유지되고, 지저분한 브라우저 제어 코드는 한 파일에 격리된다. <strong>"스펙 정의는 저쪽, 구현은 이쪽"</strong>이라는 선을 코드 구조로 강제한 셈이다.</p>
+
+      <div class="quote">복잡함을 없앨 수 없으면, 한 곳에 가둬라. 어휘를 늘리는 대신 확장점 하나를 판 이유.</div>
+
+      <h2><span class="n">04</span>가짜 화면(demo-app) 위에서 먼저 굴린다</h2>
+      <p>뼈대를 만들 땐 실제 앱이 걸림돌이다. 로그인 막히고, 데이터 바뀌고, 느리고, 남의 서버라 마음대로 못 건드린다. 그래서 <code>demo-app/</code>이라는 <strong>가짜 화면</strong>을 하나 뒀다. 인터프리터·셀렉터 규칙·custom 확장이 제대로 도는지 검증하는 용도다.</p>
+      <p>실제 앱으로 옮길 땐 코드를 고치는 게 아니라 <strong>설정 두 줄</strong>만 바꾼다. <code>playwright.config.ts</code>의 <code>baseURL</code>과 <code>webServer</code>를 실제 앱으로 돌리고 <code>demo-app/</code>은 지운다.</p>
+
+<pre><code><span class="tok-c">// playwright.config.ts — 개발용 → 실제 앱, 스위치는 여기 한 곳</span>
+export default defineConfig({
+  use: { baseURL: process.env.<span class="tok-a">BASE_URL</span> ?? <span class="tok-s">"http://localhost:4173"</span> },
+  webServer: process.env.<span class="tok-a">BASE_URL</span>
+    ? <span class="tok-k">undefined</span>                                  <span class="tok-c">// 실제 앱: 직접 안 띄움</span>
+    : { command: <span class="tok-s">"npm run demo"</span>, port: 4173 },   <span class="tok-c">// 개발: demo-app 자동 기동</span>
+});</code></pre>
+
+      <p>포인트는 <strong>테스트 로직이 어느 화면을 상대하는지 몰라도 된다</strong>는 것. 시나리오도 인터프리터도 그대로, 상대 서버만 갈아끼운다.</p>
+
+      <h2><span class="n">05</span>시행착오 — 넘어진 건 로직이 아니었다</h2>
+      <p>인터프리터 <code>switch</code> 자체는 순탄했다. 진짜 시간을 먹은 건 그 주변이었다.</p>
+
+      <h3>삽질 1 — Playwright 브라우저 설치가 sudo에서 막힘</h3>
+      <p>샌드박스에서 <code>npx playwright install --with-deps chromium</code>을 돌렸더니 시스템 라이브러리 설치 단계에서 권한이 없어 실패했다. <code>--with-deps</code>는 <code>apt-get</code>으로 OS 패키지를 깔려 하는데, 그 권한이 없었던 것. 해법은 <strong>2단계 폴백</strong>이었다 — 되면 <code>--with-deps</code>, 안 되면 브라우저 바이너리만이라도 받는다.</p>
+
+<pre><code><span class="tok-c"># 권한 되면 전부, 막히면 브라우저 바이너리만이라도</span>
+npx playwright install --with-deps chromium || npx playwright install chromium</code></pre>
+
+      <p><code>||</code> 한 줄이지만 교훈은 명확했다 — <strong>"환경이 당연히 갖춰져 있겠지"라는 가정부터 틀린다.</strong> (지난 글의 <code>openssh-client</code>가 아예 없던 것과 같은 종류의 실수다. 인증 삽질은 그 글에서 이미 다뤘으니 여기선 한 줄로 넘어간다.)</p>
+
+      <h3>삽질 2 — flaky, 진짜 실패인 척하는 가짜 실패</h3>
+      <p>실제 앱에 붙이자 <strong>같은 테스트가 됐다 안 됐다</strong> 하기 시작했다. 원인은 대개 타이밍이다 — 요소가 뜨기 전에 클릭하거나, 애니메이션 중에 텍스트를 읽거나, 네트워크가 느린 순간에 걸린다. 여기서 반사적으로 <code>wait: 3000</code> 같은 <strong>고정 대기를 흩뿌리고 싶은 유혹</strong>이 온다. 그건 테스트를 느리게 만들면서 근본은 못 고친다.</p>
+      <p>대신 두 가지로 잡았다. 첫째, 인터프리터의 assert를 전부 <strong>Playwright의 자동 대기(web-first assertion)</strong>에 태웠다. <code>toBeVisible()</code>은 요소가 나타날 때까지 알아서 기다린다. 둘째, 그래도 남는 진짜 flaky는 숨기지 않고 <strong>재시도 횟수를 명시</strong>해 드러냈다.</p>
+
+<pre><code><span class="tok-c">// flaky를 0으로 숨기지 말고, 몇 번 흔들리는지 보이게</span>
+retries: process.env.<span class="tok-a">CI</span> ? <span class="tok-s">2</span> : <span class="tok-s">0</span>,
+reporter: [[<span class="tok-s">"html"</span>], [<span class="tok-s">"list"</span>]],   <span class="tok-c">// 실패 리포트로 원인 추적</span></code></pre>
+
+      <div class="callout warn">
+        <span class="h">고정 sleep은 flaky의 진통제일 뿐</span>
+        <code>wait</code> 스텝은 어휘에 넣어두긴 했지만 <strong>최후의 수단</strong>으로만 쓴다. "요소가 뜰 때까지"를 조건으로 기다리는 게 원칙이고, "몇 초"를 기다리는 건 예외다. 이 규칙을 안 세우면 시나리오가 온통 <code>wait</code>로 도배되면서 느려지고, 정작 진짜 버그는 대기 뒤에 숨는다.
+      </div>
+
+      <h3>삽질 3 — "이 로직 어디 두지?"가 제일 오래 걸렸다</h3>
+      <p>기술적 버그보다 <strong>판단</strong>이 더 오래 걸렸다. 새 동작이 필요할 때마다 매번 같은 질문 앞에 섰다 — 인터프리터에 기본 <code>case</code>로 넣나, <code>custom.ts</code>로 빼나? 결국 기준을 문장으로 고정하고 나서야 고민이 멈췄다.</p>
+      <ul class="clean">
+        <li><strong>여러 시나리오가 공통으로 쓰는 화면 동작</strong>이고 어휘로 자연스럽게 이름 붙는다 → 인터프리터 기본 <code>case</code>.</li>
+        <li><strong>특정 기능에만 쓰이거나 브라우저 제어가 지저분</strong>하다(업로드·다중 탭 등) → <code>custom.ts</code>.</li>
+      </ul>
+      <p>기준이 없을 땐 그때그때 기분으로 갈렸고, 그 결과 비슷한 로직이 두 곳에 흩어졌다. 기준 한 줄이 리팩터링 몇 시간을 아꼈다.</p>
+
+      <h2><span class="n">06</span>구축에서 운영으로 넘어가며 세운 루틴</h2>
+      <p>이제 뼈대는 섰고, 초점은 "안 깨지게 굴리기"로 옮겨갔다. 반복 작업은 순서로 못 박아 뒀다.</p>
+      <ol class="steps">
+        <li>스펙 쪽에서 새 시나리오/셀렉터가 넘어오면 <code>git pull</code>로 읽기 전용 입력을 갱신.</li>
+        <li>demo-app에서 먼저 돌려 인터프리터가 새 스텝을 이해하는지 확인.</li>
+        <li>기본 어휘로 안 되면 → <code>custom.ts</code>에 이름표 붙여 구현.</li>
+        <li>실제 앱(<code>BASE_URL</code>)으로 돌려 flaky 여부 확인 — 흔들리면 원인(타이밍/셀렉터)부터 추적.</li>
+        <li>CI에서 <code>retries</code>·리포트로 안정성 지표를 남기고, 실패는 숨기지 말고 드러낸다.</li>
+      </ol>
+
+      <div class="tldr">
+        <b>배운 것 세 줄.</b> ① 실행 엔진의 어휘는 최소로 고정하고, 복잡함은 <code>custom</code> 확장점 하나에 가둬라. ② 뼈대는 실제 앱이 아니라 가짜 화면(demo-app) 위에서 세우고, 전환은 설정 한 곳으로. ③ 넘어지는 건 대개 로직이 아니라 <strong>환경 설치·flaky·경계 판단</strong>이다 — 각각을 폴백 한 줄, 자동 대기, 기준 문장으로 막아둬라.
+      </div>
+
+      <hr>
+      <p>다음 글에서는 <code>custom.ts</code>에 쌓인 확장들을 어떻게 정리하는지, 그리고 CI 실패 리포트를 스펙 쪽 <code>last_verified</code> 갱신 루틴과 어떻게 연결하는지를 다룰 예정이다.</p>
+
+    </article>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="tags">
+      <span class="tag">#test-automation</span>
+      <span class="tag">#playwright</span>
+      <span class="tag">#interpreter</span>
+      <span class="tag">#flaky</span>
+      <span class="tag">#ci</span>
+      <span class="tag">#devlog</span>
+    </div>
+    <p style="margin-top:18px">Taeik's Dev Log · 테스트 자동화 기록<br>
+    저장소: <b>TIKim1988 / test-automation-skeleton</b> (private) · 이 글은 GitHub Pages로 게시됨 · <a href="https://tikim1988.github.io/">← 지난 글: 사람이 읽고 기계가 실행하는 테스트 케이스 만들기</a></p>
+  </div>
+</footer>
+
+<script>
+  function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}
+  function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeNav()});
+</script>
+
+</body>
+</html>
