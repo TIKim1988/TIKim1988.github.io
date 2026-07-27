@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="test-automation-skeleton — 셀렉터가 낡아 테스트가 깨지는 문제를 셀프힐링으로 막기 시작한 기록. 로케이터 접근을 한 곳으로 모으고(STEP1), 힐링 리포트 배관을 깔고(STEP2), primary 감지와 지문 캡처를 붙인(STEP3) 토대 작업.">
+<title>셀렉터가 낡아도 안 깨지게 — 셀프힐링 로케이터 토대 만들기 · Taeik's Dev Log</title>
+<style>
+  :root{
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#26303d; --text:#e6edf3; --muted:#9aa7b4;
+    --accent:#58a6ff; --accent2:#7ee787; --warn:#e3b341; --danger:#ff7b72;
+    --code:#0b1017;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",Roboto,"Apple SD Gothic Neo",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);line-height:1.75;font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  header.hero{
+    border-bottom:1px solid var(--border);
+    background:radial-gradient(1200px 400px at 20% -10%,rgba(88,166,255,.14),transparent 60%),var(--bg);
+    padding:72px 0 44px;
+  }
+  .kicker{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+    color:var(--accent2);background:rgba(126,231,135,.08);
+    border:1px solid rgba(126,231,135,.25);border-radius:999px;padding:5px 12px;margin-bottom:20px;
+  }
+  h1{font-size:34px;line-height:1.28;margin:0 0 16px;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:18px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:26px;color:var(--muted);font-size:14px;font-family:var(--mono)}
+  .meta b{color:var(--text);font-weight:600}
+  main{padding:8px 0 60px}
+  article h2{font-size:24px;margin:52px 0 14px;letter-spacing:-.01em}
+  article h2 .n{font-family:var(--mono);color:var(--accent);font-size:16px;margin-right:10px}
+  article h3{font-size:18px;margin:30px 0 8px;color:var(--text)}
+  p{margin:14px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  strong{color:#fff}
+  .tldr{
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);
+    border-radius:10px;padding:18px 20px;margin:28px 0;
+  }
+  .tldr b{color:var(--accent2)}
+  ul.clean{padding-left:20px;margin:14px 0}
+  ul.clean li{margin:8px 0}
+  pre{
+    background:var(--code);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.6;
+    margin:18px 0;
+  }
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface2);border:1px solid var(--border);
+    padding:1.5px 6px;border-radius:5px;color:#d7e2ee}
+  pre code{background:none;border:none;padding:0;color:#c9d5e1}
+  .tok-c{color:#6b7683}      /* comment */
+  .tok-k{color:var(--danger)} /* keyword */
+  .tok-s{color:var(--accent2)} /* string */
+  .tok-a{color:var(--accent)}  /* attr/key */
+  .diagram{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:24px;margin:26px 0;font-family:var(--mono);font-size:13px;color:var(--muted);
+    line-height:1.5;overflow-x:auto;
+  }
+  .stack{display:grid;gap:10px}
+  .layer{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface2)}
+  .layer .t{color:var(--text);font-family:var(--sans);font-weight:600;font-size:14px}
+  .layer .d{font-size:12.5px;margin-top:3px}
+  .layer.own{border-color:rgba(88,166,255,.5)}
+  .layer.ext{border-style:dashed;opacity:.85}
+  .callout{
+    border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:22px 0;background:var(--surface);
+  }
+  .callout.warn{border-left:3px solid var(--warn)}
+  .callout.warn .h{color:var(--warn)}
+  .callout .h{font-weight:700;display:block;margin-bottom:6px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+  .steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px dashed var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:0;top:9px;
+    width:28px;height:28px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent);font-family:var(--mono);font-size:13px;display:grid;place-items:center;
+  }
+  hr{border:none;border-top:1px solid var(--border);margin:44px 0}
+  .quote{border-left:3px solid var(--accent);padding:4px 0 4px 18px;color:var(--muted);font-style:italic;margin:22px 0}
+  footer{border-top:1px solid var(--border);padding:34px 0 60px;color:var(--muted);font-size:14px}
+  footer a{color:var(--accent)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--border);
+    border-radius:999px;padding:3px 10px;background:var(--surface)}
+  @media(max-width:600px){h1{font-size:27px}body{font-size:16px}article h2{font-size:21px}}
+
+  /* --- 고정 LNB 사이드바 --- */
+  body{padding-left:260px}
+  .nav-toggle,.lnb-overlay,.lnb .close{display:none}
+  .lnb{position:fixed;top:0;left:0;height:100vh;width:260px;background:var(--surface);
+    border-right:1px solid var(--border);z-index:40;padding:28px 18px 40px;overflow-y:auto}
+  .lnb .brand{font-family:var(--mono);font-size:12.5px;color:var(--accent2);letter-spacing:.05em;margin-bottom:8px}
+  .lnb .home{display:block;color:var(--text);font-weight:600;margin-bottom:8px;font-size:17px}
+  .lnb .home:hover{text-decoration:none;color:var(--accent)}
+  .lnb .home.active{color:var(--accent)}
+  .lnb .folder{margin:22px 0 6px;font-size:12.5px;color:var(--muted);font-family:var(--mono);
+    display:flex;align-items:center;gap:7px}
+  .lnb ul{list-style:none;padding:0;margin:0}
+  .lnb li a{display:block;padding:9px 11px;border-radius:8px;color:var(--text);font-size:14px;line-height:1.45}
+  .lnb li a:hover{background:var(--surface2);text-decoration:none}
+  .lnb li a.active{background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.35);color:var(--accent)}
+  .lnb li .date{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  /* 모바일: 사이드바 접고 햄버거로 전환 */
+  @media(max-width:860px){
+    body{padding-left:0}
+    .nav-toggle{display:grid;position:fixed;top:14px;left:14px;z-index:50;width:44px;height:44px;border-radius:10px;
+      background:rgba(22,27,34,.9);backdrop-filter:blur(6px);border:1px solid var(--border);color:var(--text);
+      cursor:pointer;place-items:center;font-size:18px;line-height:1}
+    .nav-toggle:hover{border-color:var(--accent);color:var(--accent)}
+    .lnb{transform:translateX(-100%);transition:transform .25s ease;z-index:70;width:280px;max-width:82vw}
+    .lnb.open{transform:none}
+    .lnb .close{display:block;position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);
+      font-size:22px;cursor:pointer;line-height:1}
+    .lnb .close:hover{color:var(--text)}
+    .lnb-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;visibility:hidden;
+      transition:opacity .2s;z-index:60}
+    .lnb-overlay.open{opacity:1;visibility:visible}
+  }
+</style>
+</head>
+<body>
+
+<button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+<div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
+<nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
+  <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
+  <div class="brand">Taeik's Dev Log</div>
+  <a class="home" href="index.html">🏠 홈</a>
+
+  <div class="folder">📁 테스트케이스 관리 (TC)</div>
+  <ul>
+    <li><a href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
+  </ul>
+
+  <div class="folder">📁 자동화 엔진</div>
+  <ul>
+    <li><a href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
+    <li><a class="active" href="self-healing-locator.html">셀렉터가 낡아도 안 깨지게 — 셀프힐링 토대 만들기<span class="date">2026-07-27</span></a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">DEV LOG · 테스트 자동화</span>
+    <h1>셀렉터가 낡아도 안 깨지게 — 셀프힐링 로케이터 토대 만들기</h1>
+    <p class="lede">화면이 조금 바뀌면 테스트가 우수수 빨개진다. 진짜 버그가 아니라 <em>셀렉터가 낡아서</em>. 그래서 "일단 통과는 시키되, 낡았다는 사실은 놓치지 않는" 셀프힐링을 붙이기 시작했다. 오늘은 그 토대 세 단계(STEP 1~3).</p>
+    <div class="meta">
+      <span>✍️ <b>Taeik</b></span>
+      <span>📅 2026-07-27</span>
+      <span>📦 <b>test-automation-skeleton</b></span>
+      <span>⏱️ 약 7분</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <article>
+
+      <div class="tldr">
+        <b>요약 먼저.</b> primary(원래 셀렉터)로 요소를 못 잡을 때, 초록 실행에서 떠둔 <strong>지문(fingerprint)</strong>으로 대신 잡아 테스트를 살리되 무엇이 낡았는지는 리포트로 남기는 게 셀프힐링이다. 오늘은 실제 힐링을 켜기 전 <strong>토대</strong>만 깔았다 — <strong>STEP 1</strong> 모든 로케이터 접근을 함수 하나로 모으고, <strong>STEP 2</strong> 힐링 기록용 <code>heal-report.json</code> 배관을 깔고, <strong>STEP 3</strong> primary 감지 + 지문 캡처를 넣었다. 세 단계 모두 기본 실행 동작은 <em>1도 안 바뀌게</em> 설계했다. 정작 시간을 먹은 건 코드가 아니라, 채팅으로만 하다 만 작업을 <strong>진짜 GitHub 저장소에 붙이는 인증 삽질</strong>이었다.
+      </div>
+
+      <div class="callout warn">
+        <span class="h">왜 이 글이 여기서 시작하냐면</span>
+        지난 작업까지는 채팅으로만 진행해서 실제 저장소에 손을 못 댔다. 이번엔 작업 환경을 저장소에 직접 붙여서, 초안으로 받아둔 셀프힐링 코드를 <strong>실제 <code>test-automation-skeleton</code> 위에서</strong> 이어붙였다. 그 과정에서 SSH 인증부터 다시 뚫어야 했다(뒤 05장).
+      </div>
+
+      <h2><span class="n">01</span>왜 셀프힐링인가 — 통과시키되, 숨기진 말자</h2>
+      <p>자동화 테스트가 빨개지는 이유는 크게 둘이다. <strong>진짜 버그</strong>거나, <strong>셀렉터가 낡아서</strong>. 후자는 기능은 멀쩡한데 버튼 마크업이 살짝 바뀌어 <code>getByRole</code> 하나가 어긋난 경우다. 이게 쌓이면 "또 셀렉터 깨졌겠지" 하고 빨간불을 무시하게 되고, 그 순간 자동화는 죽는다.</p>
+      <p>셀프힐링의 발상은 단순하다. primary 셀렉터가 요소를 못 잡으면, <strong>정상일 때 떠둔 그 요소의 생김새(지문)</strong>로 후보를 만들어 대신 잡는다. 테스트는 통과하되, "이건 힐링으로 겨우 살린 거다"라는 기록을 남긴다. 핵심 원칙 한 줄 — <span class="quote">통과는 시키되, 낡았다는 사실은 절대 숨기지 않는다.</span></p>
+      <p>그래서 전체를 다섯 단계로 쪼갰다. 각 단계는 <strong>그 자체로 안전</strong>해야 한다. 즉 힐링을 실제로 켜기 전까지는 기존 테스트 결과가 한 톨도 바뀌면 안 된다. 오늘 한 STEP 1~3은 전부 "동작 불변"이 합격 기준이었다.</p>
+
+      <div class="diagram">
+        <div class="stack">
+          <div class="layer own"><div class="t">STEP 1 · 배선</div><div class="d">모든 로케이터 접근을 resolveLocator 함수 하나로 모은다. (오늘)</div></div>
+          <div class="layer own"><div class="t">STEP 2 · 기록</div><div class="d">힐링 발동을 heal-report.json 으로 남기는 recorder. (오늘)</div></div>
+          <div class="layer own"><div class="t">STEP 3 · 감지 + 지문</div><div class="d">primary 가 잡는지 짧게 감지하고, 초록일 때 지문을 떠 baseline 에 적립. (오늘)</div></div>
+          <div class="layer ext"><div class="t">STEP 4 · 폴백 캐스케이드</div><div class="d">못 잡으면 지문으로 testid → role → label → text 후보를 훑는다. (다음)</div></div>
+          <div class="layer ext"><div class="t">STEP 5 · 신뢰도 + 가드레일</div><div class="d">임계값, 테스트당 최대 힐링 수, 배포 게이트에선 힐링=실패(strict). (다음)</div></div>
+        </div>
+      </div>
+
+      <h2><span class="n">02</span>STEP 1 — 로케이터 접근을 한 곳으로 모으기</h2>
+      <p>힐링을 나중에 <em>한 군데만 고쳐서</em> 전체에 적용하려면, 요소를 잡는 모든 지점이 함수 하나를 통과해야 한다. 그래서 인터프리터 곳곳에 흩어져 있던 <code>page.locator(...)</code> 생성을 <code>resolveLocator()</code> 단일 진입점으로 모았다.</p>
+      <p>여기서 첫 삽질. 초안 코드는 셀렉터가 <strong>CSS 문자열</strong>이라고 가정했는데, 실제 저장소의 셀렉터는 <code>role / testId / text / css / index</code>를 담은 <strong>구조체(ElementDef)</strong>였다. 초안에 딸려온 배선 문서에도 "실제 코드 못 봤으니 네 스키마에 맞춰라"라고 적혀 있었다. 그래서 primary 로케이터를 만드는 기존 로직을 그대로 <code>buildPrimaryLocator()</code>로 옮겨 단일 생성 지점으로 삼았다.</p>
+
+<pre><code><span class="tok-c">// 모든 요소 액션이 이 한 줄을 지난다. 지금은 primary 만 돌려준다.</span>
+<span class="tok-k">const</span> { locator } = <span class="tok-k">await</span> resolveLocator(page, step.target, def, ctx);
+<span class="tok-k">await</span> locator.click();   <span class="tok-c">// click / fill / assert_* 전부 동일 패턴</span></code></pre>
+
+      <p>Playwright 로케이터는 <strong>지연 평가</strong>라, 여기서 만들어 돌려줘도 실제 DOM 탐색은 뒤의 <code>.click()</code> 시점에 일어난다. 덕분에 함수로 한 겹 감쌌어도 타이밍까지 기존과 똑같다. 무해한 리팩터링이라는 걸 <code>tsc</code> 0 에러 + 테스트 29개 수집 그대로로 확인했다.</p>
+
+      <h2><span class="n">03</span>STEP 2 — 낡음을 기록하는 heal-report</h2>
+      <p>힐링은 "몰래 살려주는" 기능이라 위험하다. 기록이 없으면 셀렉터는 영영 낡은 채 방치된다. 그래서 힐링이 발동할 때마다 <strong>무엇을, 언제, 어떤 전략으로</strong> 살렸는지 이벤트로 모아 <code>test-results/heal-report.json</code>에 집계하는 recorder를 먼저 깔았다.</p>
+      <ul class="clean">
+        <li>전략별(testid/role/label/text)·테스트별 힐링 횟수 집계</li>
+        <li>워커 여러 개나 CI 재시도 대비 기존 파일 병합 + 중복 제거</li>
+        <li>테스트당 컨텍스트에 <code>onHeal</code> 콜백을 꽂아두고, 실행 끝에 flush</li>
+      </ul>
+      <p>지금은 힐링이 아직 안 켜져서 리포트가 <code>totalHeals: 0</code>인 빈 상태로 나온다. 그래도 상관없다. 이 단계의 목적은 <strong>배관</strong>이니까. STEP 4에서 resolver가 <code>onHeal</code>을 부르기 시작하면 <em>코드 한 줄 안 고치고</em> 리포트가 채워진다. recorder 로직만은 가짜 이벤트를 넣어 집계·병합·중복제거를 유닛 테스트로 미리 검증해뒀다.</p>
+
+      <h2><span class="n">04</span>STEP 3 — primary 감지 + 지문 캡처</h2>
+      <p>힐링의 재료는 "정상일 때 그 요소가 어떻게 생겼나"다. 그걸 STEP 3에서 만든다. 두 조각이다.</p>
+      <ul class="clean">
+        <li><strong>감지</strong> — primary가 짧은 타임아웃 안에 요소를 잡는지 본다(<code>isResolvable</code>). 힐링을 발동할지 말지의 씨앗.</li>
+        <li><strong>지문 캡처</strong> — 초록 실행에서 실제 element를 조회해 <code>tag / testid / role / name / placeholder / text</code>를 떠 <code>baseline.json</code>에 쌓는다. 셀렉터 파일은 primary만 저장하니, 폴백의 유일한 공급원이 이 지문이다.</li>
+      </ul>
+
+<pre><code><span class="tok-c">// 캡처 모드이고 "요소가 있어야 정상"인 액션일 때만 감지 + 지문 적립.</span>
+<span class="tok-c">// 액션에 실제 쓰이는 로케이터는 여전히 primary → 통과/실패 결과 불변.</span>
+<span class="tok-k">if</span> (ctx.captureEnabled &amp;&amp; expectsPresence(ctx.action)) {
+  <span class="tok-k">if</span> (<span class="tok-k">await</span> isResolvable(locator)) {
+    <span class="tok-k">const</span> fp = <span class="tok-k">await</span> captureFingerprint(locator);
+    <span class="tok-k">if</span> (fp) ctx.onCapture?.(logicalName, fp);
+  }
+}</code></pre>
+
+      <p>안전장치를 두 개 박았다. 첫째, 캡처는 <code>HEAL_CAPTURE=1</code>일 때만 켜진다. 기본 실행은 감지 프로브조차 안 돌아서 STEP 2와 <strong>완전히 동일</strong>하다. 매 실행마다 짧은 타임아웃을 스텝 수만큼 물리는 낭비를 피하려는 거다. 둘째, <code>assert_hidden</code>처럼 <strong>부재가 정상</strong>인 액션은 애초에 감지/캡처에서 제외했다. 없어야 정상인 요소를 "못 잡았으니 힐링하자"로 오해하면 안 되니까.</p>
+      <p>baseline은 파일로 커밋해 둔다. CI는 매 실행이 새 체크아웃이라 메모리가 없어서, 초록 실행에서 뜬 지문을 파일에 남겨야 다음(빨강일 수 있는) 실행에서 STEP 4가 꺼내 쓴다.</p>
+
+      <h2><span class="n">05</span>정작 넘어진 곳 — 코드 밖</h2>
+      <p>지난 엔진 글에서도 그랬듯, 이번에도 로직보다 <strong>환경</strong>에서 더 넘어졌다.</p>
+      <ol class="steps">
+        <li><strong>SSH 인증부터 다시.</strong> 채팅으로 하던 걸 실제 저장소에 붙이려니 private repo 접근이 막혔다. 키를 새로 만들어 GitHub에 등록하는데, 등록 순간 <strong>sudo 모드(2FA)</strong>가 떠서 이 단계는 사람이 직접 승인해야 했다.</li>
+        <li><strong>대상 사이트에 못 붙음.</strong> 테스트 대상(<code>lomastore.com</code>)이 이 작업 환경의 네트워크 허용목록 밖이라, Playwright를 실제로 돌려볼 수가 없었다. 다만 이건 배선 전후 똑같이 막히는 지점이라 결과 비교에는 영향이 없다.</li>
+        <li><strong>브라우저는 있는데 뿌리가 없다.</strong> 감지/캡처를 진짜 DOM에서 검증하려고 헤드리스 크롬을 띄우려 했더니 OS 라이브러리가 없고, 설치엔 root가 필요했다. 그래서 순수 로직(지문 저장소, 액션 분류)은 유닛으로 확실히 잡고, 브라우저 의존 부분은 타입체크 + 리뷰로 남긴 뒤 "로컬/CI에서 <code>HEAL_CAPTURE=1</code>로 한 번 돌려 실검증"을 숙제로 명시했다.</li>
+      </ol>
+
+      <div class="tldr">
+        <b>배운 것 세 줄.</b> ① 나중에 한 곳만 고쳐 전체에 퍼지게 하려면, <strong>먼저 모든 접근을 함수 하나로 모아라</strong> — 힐링은 그 다음이다. ② 몰래 살려주는 기능일수록 <strong>기록 배관을 먼저</strong> 깔아라. 통과보다 "무엇이 낡았나"가 중요하다. ③ 위험한 부수효과는 <strong>기본 off + 명시적 플래그</strong>로 가둬라. 기본 실행이 안 바뀌면 언제든 되돌릴 수 있다.
+      </div>
+
+      <hr>
+      <p>다음 글은 <strong>STEP 4</strong> — primary가 깨졌을 때 baseline 지문으로 <code>testid → role → label → text</code> 후보를 훑어 실제로 힐링하고, 그 순간을 <code>heal-report.json</code>에 처음으로 채우는 이야기. 이어서 <strong>STEP 5</strong>에서 신뢰도 임계값과 배포 게이트(strict)로 "아무거나 잡아 통과시키는" 사고를 막을 예정이다.</p>
+
+    </article>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="tags">
+      <span class="tag">#test-automation</span>
+      <span class="tag">#playwright</span>
+      <span class="tag">#self-healing</span>
+      <span class="tag">#locator</span>
+      <span class="tag">#refactoring</span>
+      <span class="tag">#devlog</span>
+    </div>
+    <p style="margin-top:18px">Taeik's Dev Log · 테스트 자동화 기록<br>
+    저장소: <b>TIKim1988 / test-automation-skeleton</b> (private) · 이 글은 GitHub Pages로 게시됨 · <a href="test-automation-engine.html">← 지난 글: YAML을 브라우저 클릭으로 바꾸는 엔진 만들기</a></p>
+  </div>
+</footer>
+
+<script>
+  function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}
+  function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeNav()});
+</script>
+
+</body>
+</html>
