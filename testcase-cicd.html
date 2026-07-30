@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="test-automation-skeleton — 테스트케이스 YAML을 손으로 고치는 게 병목이 된 이유를 분해하고, 엑셀 대신 변환 방향을 뒤집기, 검증을 PR 게이트로 옮기기, 셀렉터 유지보수를 봇 PR 리뷰로 내리기, 브라우저 없는 계약 테스트까지 네 가지 개선안을 정리한 기록.">
+<title>손으로 고치는 게 병목이다 — 테스트케이스와 자동화의 CI/CD 다시 짜기 | Taeik's Dev Log</title>
+<style>
+  :root{
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#26303d; --text:#e6edf3; --muted:#9aa7b4;
+    --accent:#58a6ff; --accent2:#7ee787; --warn:#e3b341; --danger:#ff7b72;
+    --code:#0b1017;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",Roboto,"Apple SD Gothic Neo",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);line-height:1.75;font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  header.hero{
+    border-bottom:1px solid var(--border);
+    background:radial-gradient(1200px 400px at 20% -10%,rgba(88,166,255,.14),transparent 60%),var(--bg);
+    padding:72px 0 44px;
+  }
+  .kicker{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+    color:var(--accent2);background:rgba(126,231,135,.08);
+    border:1px solid rgba(126,231,135,.25);border-radius:999px;padding:5px 12px;margin-bottom:20px;
+  }
+  h1{font-size:34px;line-height:1.28;margin:0 0 16px;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:18px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:26px;color:var(--muted);font-size:14px;font-family:var(--mono)}
+  .meta b{color:var(--text);font-weight:600}
+  main{padding:8px 0 60px}
+  article h2{font-size:24px;margin:52px 0 14px;letter-spacing:-.01em}
+  article h2 .n{font-family:var(--mono);color:var(--accent);font-size:16px;margin-right:10px}
+  article h3{font-size:18px;margin:30px 0 8px;color:var(--text)}
+  p{margin:14px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  strong{color:#fff}
+  .tldr{
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);
+    border-radius:10px;padding:18px 20px;margin:28px 0;
+  }
+  .tldr b{color:var(--accent2)}
+  ul.clean{padding-left:20px;margin:14px 0}
+  ul.clean li{margin:8px 0}
+  pre{
+    background:var(--code);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.6;
+    margin:18px 0;
+  }
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface2);border:1px solid var(--border);
+    padding:1.5px 6px;border-radius:5px;color:#d7e2ee}
+  pre code{background:none;border:none;padding:0;color:#c9d5e1}
+  .tok-c{color:#6b7683}      /* comment */
+  .tok-k{color:var(--danger)} /* keyword */
+  .tok-s{color:var(--accent2)} /* string */
+  .tok-a{color:var(--accent)}  /* attr/key */
+  .diagram{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:24px;margin:26px 0;font-family:var(--mono);font-size:13px;color:var(--muted);
+    line-height:1.5;overflow-x:auto;
+  }
+  .stack{display:grid;gap:10px}
+  .layer{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface2)}
+  .layer .t{color:var(--text);font-family:var(--sans);font-weight:600;font-size:14px}
+  .layer .d{font-size:12.5px;margin-top:3px}
+  .layer.own{border-color:rgba(88,166,255,.5)}
+  .layer.ext{border-style:dashed;opacity:.85}
+  .callout{
+    border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:22px 0;background:var(--surface);
+  }
+  .callout.warn{border-left:3px solid var(--warn)}
+  .callout.warn .h{color:var(--warn)}
+  .callout .h{font-weight:700;display:block;margin-bottom:6px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+  .steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px dashed var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:0;top:9px;
+    width:28px;height:28px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent);font-family:var(--mono);font-size:13px;display:grid;place-items:center;
+  }
+  hr{border:none;border-top:1px solid var(--border);margin:44px 0}
+  .quote{border-left:3px solid var(--accent);padding:4px 0 4px 18px;color:var(--muted);font-style:italic;margin:22px 0}
+  footer{border-top:1px solid var(--border);padding:34px 0 60px;color:var(--muted);font-size:14px}
+  footer a{color:var(--accent)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--border);
+    border-radius:999px;padding:3px 10px;background:var(--surface)}
+  @media(max-width:600px){h1{font-size:27px}body{font-size:16px}article h2{font-size:21px}}
+
+  /* --- 고정 LNB 사이드바 --- */
+  body{padding-left:260px}
+  .nav-toggle,.lnb-overlay,.lnb .close{display:none}
+  .lnb{position:fixed;top:0;left:0;height:100vh;width:260px;background:var(--surface);
+    border-right:1px solid var(--border);z-index:40;padding:28px 18px 40px;overflow-y:auto}
+  .lnb .brand{font-family:var(--mono);font-size:12.5px;color:var(--accent2);letter-spacing:.05em;margin-bottom:8px}
+  .lnb .home{display:block;color:var(--text);font-weight:600;margin-bottom:8px;font-size:17px}
+  .lnb .home:hover{text-decoration:none;color:var(--accent)}
+  .lnb .home.active{color:var(--accent)}
+  .lnb .folder{margin:22px 0 6px;font-size:12.5px;color:var(--muted);font-family:var(--mono);
+    display:flex;align-items:center;gap:7px}
+  .lnb ul{list-style:none;padding:0;margin:0}
+  .lnb li a{display:block;padding:9px 11px;border-radius:8px;color:var(--text);font-size:14px;line-height:1.45}
+  .lnb li a:hover{background:var(--surface2);text-decoration:none}
+  .lnb li a.active{background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.35);color:var(--accent)}
+  .lnb li .date{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  /* 모바일: 사이드바 접고 햄버거로 전환 */
+  @media(max-width:860px){
+    body{padding-left:0}
+    .nav-toggle{display:grid;position:fixed;top:14px;left:14px;z-index:50;width:44px;height:44px;border-radius:10px;
+      background:rgba(22,27,34,.9);backdrop-filter:blur(6px);border:1px solid var(--border);color:var(--text);
+      cursor:pointer;place-items:center;font-size:18px;line-height:1}
+    .nav-toggle:hover{border-color:var(--accent);color:var(--accent)}
+    .lnb{transform:translateX(-100%);transition:transform .25s ease;z-index:70;width:280px;max-width:82vw}
+    .lnb.open{transform:none}
+    .lnb .close{display:block;position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);
+      font-size:22px;cursor:pointer;line-height:1}
+    .lnb .close:hover{color:var(--text)}
+    .lnb-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;visibility:hidden;
+      transition:opacity .2s;z-index:60}
+    .lnb-overlay.open{opacity:1;visibility:visible}
+  }
+</style>
+</head>
+<body>
+
+<button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+<div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
+<nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
+  <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
+  <div class="brand">Taeik's Dev Log</div>
+  <a class="home" href="index.html">🏠 홈</a>
+
+  <div class="folder">📁 테스트케이스 관리 (TC)</div>
+  <ul>
+    <li><a href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
+    <li><a class="active" href="testcase-cicd.html">손으로 고치는 게 병목이다 — 테스트케이스 CI/CD 다시 짜기<span class="date">2026-07-30</span></a></li>
+  </ul>
+
+  <div class="folder">📁 자동화 엔진</div>
+  <ul>
+    <li><a href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
+    <li><a href="self-healing-locator.html">셀렉터가 낡아도 안 깨지게 — 셀프힐링 토대 만들기<span class="date">2026-07-27</span></a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">DEV LOG — 테스트케이스 CI/CD</span>
+    <h1>손으로 고치는 게 병목이다 — 테스트케이스와 자동화의 CI/CD 다시 짜기</h1>
+    <p class="lede">YAML을 단일 소스로 둔 건 맞는데, 정작 그 YAML을 사람이 손으로 고치기가 껄끄럽다. 엑셀을 끼우면 변환 단계가 하나 더 늘고, 그 사이에 자동화 코드도 같이 늙는다. 불편함의 정체를 다시 분해하고, 실제 저장소 상태를 근거로 개선안 네 가지를 정리했다.</p>
+    <div class="meta">
+      <span>✍️ <b>Taeik</b></span>
+      <span>📅 2026-07-30</span>
+      <span>📦 <b>test-automation-skeleton</b></span>
+      <span>⏱️ 약 9분</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <article>
+
+      <div class="tldr">
+        <b>결론 먼저.</b> 병목은 <strong>YAML이라는 포맷</strong>이 아니다. ① 편집할 때 도와주는 게 아무것도 없고(자동완성, 스키마 없음), ② 틀렸다는 사실을 <strong>다음 날 새벽 cron이 돌고 나서</strong> 알게 되고, ③ 문서(README 목록)를 사람이 손으로 맞춰야 한다는 세 가지가 겹친 거다. 그래서 엑셀을 <em>입력</em>으로 넣는 건 문제를 하나 더 만드는 선택이다. 대신 <strong>변환 방향을 뒤집어서</strong> 엑셀과 README를 YAML에서 생성되는 읽기 전용 산출물로 만들고, 검증을 <strong>PR 게이트</strong>로 끌어오고, 셀렉터 유지보수를 <strong>편집에서 리뷰로</strong> 내리고, 자동화 코드가 안 커지게 <strong>어휘를 동결</strong>한다.
+      </div>
+
+      <h2><span class="n">01</span>먼저 인정할 것 — 3계층 분리는 이미 잘 굴러간다</h2>
+      <p>불만 얘기하기 전에 지금 구조에서 잘 되고 있는 걸 짚어야 개선안이 엉뚱한 데를 때리지 않는다. 현재 저장소는 이렇게 나뉘어 있다.</p>
+
+      <div class="diagram">
+        <div class="stack">
+          <div class="layer own"><div class="t">testcases/**/*.yaml — 29개</div><div class="d">사람이 읽는 시나리오. 화면 요소를 popular_tab_healthcare 같은 의미 이름으로만 참조한다.</div></div>
+          <div class="layer own"><div class="t">selectors/*.yaml — 10개</div><div class="d">의미 이름 → role / testId / css / text / index 매핑. 화면 단위로 파일 분리.</div></div>
+          <div class="layer own"><div class="t">fixtures/lomastore.yaml</div><div class="d">검색어, 상품 slug, 주문자 정보 같은 실제 데이터. 민감값은 ${env.VAR} 로 우회.</div></div>
+          <div class="layer ext"><div class="t">automation/runner/* — 인터프리터 + 힐링</div><div class="d">위 세 개를 읽어 Playwright 명령으로 번역. 자동화 프로젝트 소유.</div></div>
+          <div class="layer ext"><div class="t">.github/workflows/scheduled-tests.yml</div><div class="d">매일 00:00 UTC cron 1개. 실행 → 요약 → 실패 이슈 동기화 → 리포트 메일.</div></div>
+        </div>
+      </div>
+
+      <p>이 분리 덕분에 UI가 바뀌었을 때 손댈 곳이 정확히 한 군데로 좁혀진다. 버튼 마크업만 바뀌면 <code>selectors/*.yaml</code> 한 줄, 플로우가 바뀌면 해당 테스트케이스의 <code>steps</code>, 표현이 애매한 로직은 <code>automation/steps/custom.ts</code>. 인터프리터는 안 건드린다. 그리고 실패는 이미 사람 손을 안 탄다. <code>sync-failure-issues.js</code>가 테스트 ID당 이슈 1개를 유지하고, 통과로 돌아오면 자동으로 닫는다.</p>
+      <p>즉 <strong>실행과 보고 쪽 파이프라인은 이미 자동화되어 있다.</strong> 자동화가 안 된 건 그 앞단, <strong>테스트케이스를 쓰고 고치고 문서화하는 구간</strong>이다. 여기가 지금 전부 사람 손이다.</p>
+
+      <h2><span class="n">02</span>"수동 업데이트가 수월하지 않다"의 정체</h2>
+      <p>막연히 "YAML이 불편하다"로 두면 답이 안 나온다. 실제로 뭐가 불편한지 세 갈래로 갈라 봤다.</p>
+
+      <h3>(1) 편집할 때 도와주는 게 없다</h3>
+      <p>테스트케이스를 한 줄 고치려면 사람이 이걸 다 머리에 넣고 있어야 한다. <code>action</code>은 11개 중 하나여야 하고, <code>target</code>은 <code>selectors/*.yaml</code>에 이미 등록된 이름이어야 하고, <code>id</code>는 <code>HOME-003</code> 같은 형식이어야 하고, <code>last_verified</code>는 오늘 날짜로 바꿔야 한다.</p>
+
+<pre><code><span class="tok-a">id</span>: HOME-002
+<span class="tok-a">title</span>: 인기상품 영역의 카테고리 탭을 클릭해도 에러 없이 전환된다
+<span class="tok-a">tags</span>: [regression, home]
+<span class="tok-a">last_verified</span>: <span class="tok-s">"2026-07-10"</span>   <span class="tok-c"># ← 오늘 기준 20일 지났다. 아무도 안 알려준다.</span>
+<span class="tok-a">steps</span>:
+  - <span class="tok-a">action</span>: navigate
+    <span class="tok-a">target</span>: home_page          <span class="tok-c"># selectors 의 pages 키여야 함</span>
+  - <span class="tok-a">action</span>: click
+    <span class="tok-a">target</span>: popular_tab_healthcare  <span class="tok-c"># elements 키여야 함. 오타나면 런타임에 터짐</span></code></pre>
+
+      <p>이 제약은 전부 기계가 검사할 수 있는 것들인데, 지금은 검사해주는 게 편집 시점에 하나도 없다. AI가 초안을 잘 뽑아주는 이유도 여기 있다. AI는 셀렉터 파일 전체를 한 번에 읽고 쓰니까. 사람은 파일 두 개를 왕복해야 한다. 결국 <strong>포맷이 어려운 게 아니라 참조 관계를 사람이 암기하고 있어야 하는 구조</strong>다.</p>
+
+      <h3>(2) 틀렸다는 걸 최대 24시간 뒤에 안다</h3>
+      <p>이게 제일 아프다. 현재 워크플로 트리거는 이렇다.</p>
+
+<pre><code><span class="tok-a">on</span>:
+  <span class="tok-a">schedule</span>:
+    - <span class="tok-a">cron</span>: <span class="tok-s">'0 0 * * *'</span>
+  <span class="tok-a">workflow_dispatch</span>: {}</code></pre>
+
+      <p><code>pull_request</code>도 <code>push</code>도 없다. 그러니까 오타난 <code>target</code>을 커밋해도 그 순간에는 아무 일도 안 일어나고, 다음 날 새벽에 <code>selectors 파일에 정의되지 않은 element target 입니다</code> 에러가 나면서 실패 이슈가 열린다. 최악의 경우 24시간 지연이다.</p>
+      <p>게다가 무결성 검사 스크립트는 <strong>저장소 안에 없다.</strong> 작업 세션 쪽 문서에는 "커밋 전에 <code>python3 validate_testcases.py</code>를 돌리고 에러가 있으면 커밋하지 말라"고 적혀 있지만, 저장소를 클론하면 그 파일이 없다. 즉 그 검증기는 코드가 아니라 <em>기억에 의존하는 관습</em>으로 존재한다. 사람이 잊으면 그대로 통과한다.</p>
+
+      <div class="callout warn">
+        <span class="h">이게 왜 CI/CD 문제인가</span>
+        검증기의 값은 "존재한다"가 아니라 "<strong>안 돌리고는 머지가 안 된다</strong>"에서 나온다. 로컬에서 각자 알아서 돌리는 검증기는 사실상 없는 것과 같다. 지금 구조의 가장 큰 구멍은 스키마가 없는 게 아니라 <strong>게이트가 없는 것</strong>이다.
+      </div>
+
+      <h3>(3) 문서가 손으로 유지된다</h3>
+      <p>저장소 README 맨 아래에는 "테스트케이스 전체 목록 (29개)" 표가 폴더별로 정리돼 있다. 정보로는 훌륭한데, 출처가 두 개다. 진짜 소스는 <code>testcases/</code> 아래 YAML 29개이고, README 표는 그걸 사람이 옮겨 적은 사본이다. 사본은 언젠가 반드시 어긋나고, 한 번 어긋난 문서는 그 뒤로 아무도 믿지 않는다. 테스트케이스를 추가할 때마다 "README도 같이 고쳐야 한다"는 규칙이 붙어 있다는 것 자체가 자동화 대상이라는 신호다.</p>
+
+      <h3>그래서 엑셀은?</h3>
+      <p>엑셀로 관리하면 (1)의 편집 편의성은 확실히 올라간다. 드롭다운으로 <code>action</code>을 고를 수 있고, 표로 한눈에 보인다. 문제는 엑셀을 <strong>입력</strong>으로 두는 순간 이런 흐름이 된다.</p>
+
+<pre><code>엑셀 편집 → 변환 스크립트 → YAML 29개 갱신 → 검증 → 커밋
+            ^^^^^^^^^^^^^^^^ 사람이 잊을 수 있는 단계가 하나 늘었다</code></pre>
+
+      <p>그리고 더 큰 손해가 있다. 엑셀은 <strong>diff, 코드 리뷰, blame, 병합 충돌 해결이 전부 안 된다.</strong> 지금 이 저장소는 셀렉터 파일 주석에 "2026-07-11 nav_store: substring 오매칭 수정" 같은 변경 이력을 남기고 PR로 머지하는 방식으로 굴러간다. 테스트케이스를 엑셀로 옮기면 그 이력이 바이너리 덩어리 하나로 뭉개진다. 사람 두 명이 같은 엑셀을 동시에 고치면 해결 방법이 "한 명이 포기하기"밖에 없다.</p>
+      <p>결론은 이렇다. <strong>엑셀이 주는 이득은 "보기 편함"이고, 잃는 건 "이력과 리뷰"다.</strong> 그러면 보기 편함만 가져오고 이력은 안 잃는 방향이 있다. 방향을 뒤집는 거다.</p>
+
+      <h2><span class="n">03</span>제안 1 — 변환 방향을 뒤집는다 (YAML을 소스, 엑셀을 산출물로)</h2>
+      <p>엑셀에서 YAML을 만드는 게 아니라, <strong>YAML에서 엑셀과 README를 만든다.</strong> 사람은 계속 YAML을 고치고, 보기용 산출물은 CI가 매번 새로 뽑는다. 수동 단계가 늘지 않고, 오히려 지금 손으로 하던 README 갱신이 사라진다.</p>
+
+<pre><code><span class="tok-c">// scripts/gen-tc-docs.ts — testcases/ 를 읽어 보기용 산출물을 만든다</span>
+<span class="tok-k">const</span> cases = loadTestCases(<span class="tok-s">'testcases'</span>);           <span class="tok-c">// 이미 있는 loader 재사용</span>
+<span class="tok-k">const</span> byFolder = groupBy(cases, c =&gt; folderOf(c.file));
+
+writeReadmeSection(<span class="tok-s">'README.md'</span>, renderMarkdownTables(byFolder));  <span class="tok-c">// 목록 섹션만 치환</span>
+writeXlsx(<span class="tok-s">'docs/testcases.xlsx'</span>, cases);                          <span class="tok-c">// 공유용 시트</span></code></pre>
+
+      <p>핵심은 생성만 하는 게 아니라 <strong>어긋남을 CI에서 실패로 만드는 것</strong>이다. 생성기를 돌린 뒤 diff가 남아 있으면 그건 누군가 README를 손으로 고쳤거나 생성기를 안 돌린 것이다.</p>
+
+<pre><code>- <span class="tok-a">name</span>: Check docs are in sync
+  <span class="tok-a">run</span>: |
+    npx tsx scripts/gen-tc-docs.ts
+    git diff --exit-code README.md docs/testcases.xlsx</code></pre>
+
+      <p>이러면 "테스트케이스 29개"라는 숫자를 사람이 세지 않는다. 폴더별 표도, 태그도, <code>known-issues</code>로 skip 중인 케이스 비고도 전부 YAML에서 계산된다. <code>last_verified</code>가 30일 지난 케이스 목록도 같은 생성기에서 뽑아 README 상단에 "재확인 대상" 섹션으로 박아두면, 다음에 실제 화면을 볼 우선순위가 저장소를 열자마자 보인다.</p>
+
+      <div class="callout">
+        <span class="h">그래도 엑셀에서 쓰고 싶다면</span>
+        딱 한 방향만 허용한다. <strong>신규 작성 전용 import</strong>. 엑셀에서 새 시나리오를 써서 넣으면 <code>testcases/</code>에 <em>새 파일만</em> 만들고, 기존 파일 갱신은 절대 하지 않는다. 그 뒤 수정은 YAML에서 한다. 양방향 동기화는 만들지 않는다. 양쪽에서 같은 케이스를 고쳤을 때 누가 이기는지 정하는 로직을 만들기 시작하면 그게 이 프로젝트의 새 본업이 된다.
+      </div>
+
+      <h2><span class="n">04</span>제안 2 — 검증을 PR 게이트로 끌어온다</h2>
+      <p>순서를 바꾼다. 지금은 <em>커밋 → (24시간) → 실패 발견</em>인데, 이걸 <em>PR → 즉시 검증 → 머지</em>로 만든다. 세 조각이 필요하다.</p>
+
+      <h3>(1) 검증기를 저장소 안으로, 그리고 JSON Schema로</h3>
+      <p>세션 쪽에만 있는 <code>validate_testcases.py</code>를 저장소로 옮긴다. 이때 그냥 옮기지 말고 <strong>JSON Schema</strong>로 다시 쓰는 걸 권한다. 이유는 하나다. 같은 파일 하나가 <strong>CI 검증기와 에디터 자동완성 양쪽에 동시에</strong> 쓰인다.</p>
+
+<pre><code><span class="tok-c">// .vscode/settings.json — 스키마를 에디터에 물린다</span>
+{
+  <span class="tok-s">"yaml.schemas"</span>: {
+    <span class="tok-s">"./schema/testcase.schema.json"</span>: <span class="tok-s">"testcases/**/*.yaml"</span>,
+    <span class="tok-s">"./schema/selectors.schema.json"</span>: <span class="tok-s">"selectors/*.yaml"</span>
+  }
+}</code></pre>
+
+      <p>이거 한 줄로 02장의 (1)이 절반쯤 해결된다. <code>action:</code>을 치면 11개 후보가 드롭다운으로 뜨고, 오타난 키에 즉시 빨간 줄이 그어진다. 엑셀에서 얻고 싶었던 "드롭다운"을 에디터에서 얻는 셈이다. 검사할 항목은 이미 다 정해져 있다.</p>
+      <ul class="clean">
+        <li><code>id</code> 형식(<code>&lt;화면&gt;-&lt;3자리&gt;</code>)과 <strong>전체 저장소 유일성</strong></li>
+        <li><code>action</code>이 11개 어휘 안에 있는지</li>
+        <li><strong><code>target</code>이 selectors에 실제로 존재하는지</strong> (지금은 런타임에야 터지는, 가장 흔한 실수)</li>
+        <li><code>value</code>의 <code>${...}</code> 참조가 fixtures나 env로 해석 가능한지</li>
+        <li><code>action: custom</code>의 <code>name</code>이 <code>steps/custom.ts</code>에 등록돼 있는지</li>
+        <li><code>last_verified</code> 형식, 그리고 30일 경과 목록(경고)</li>
+      </ul>
+
+      <h3>(2) PR에서는 전체를 돌리지 않는다</h3>
+      <p>29개를 <code>fullyParallel: false</code>로 실외 사이트에 대고 돌리면 PR마다 몇 분씩 먹는다. 그래서 PR에서는 <strong>바뀐 파일의 영향 범위만</strong> 돌린다. 테스트 이름이 <code>${id} - ${title}</code> 형식이라 <code>--grep</code>으로 ID를 골라내기 쉽다.</p>
+
+<pre><code><span class="tok-a">on</span>: { <span class="tok-a">pull_request</span>: { <span class="tok-a">paths</span>: [<span class="tok-s">'testcases/**'</span>, <span class="tok-s">'selectors/**'</span>, <span class="tok-s">'fixtures/**'</span>, <span class="tok-s">'automation/**'</span>] } }
+
+<span class="tok-c"># 1) 스키마 + 참조 무결성 (브라우저 불필요, 수 초)</span>
+- <span class="tok-a">run</span>: npx tsx scripts/validate-testcases.ts
+
+<span class="tok-c"># 2) 바뀐 테스트케이스만 실행</span>
+- <span class="tok-a">run</span>: |
+    IDS=$(git diff --name-only origin/main... -- testcases/ \
+          | xargs -r grep -h '^id:' | awk '{print $2}' | paste -sd'|')
+    [ -z "$IDS" ] || npx playwright test --grep "$IDS"</code></pre>
+
+      <p>전체 회귀는 지금처럼 nightly cron이 담당한다. 역할이 깔끔하게 갈린다. <strong>PR은 "이 변경이 스스로 말이 되는가", nightly는 "서비스가 지금 멀쩡한가".</strong> 지금은 후자만 있고 전자가 없다.</p>
+
+      <h3>(3) 어휘를 한 곳에서만 정의한다</h3>
+      <p><code>action</code> 목록이 지금 세 곳에 있다. <code>types.ts</code>의 <code>StepAction</code>, <code>interpreter.ts</code>의 <code>switch</code>, 그리고 README 문장. 여기에 스키마까지 더하면 네 곳이 된다. 하나가 늘 때마다 네 군데를 맞춰야 하는 구조는 반드시 어긋난다. 어휘 정의를 한 파일에 두고 스키마는 거기서 <em>생성</em>하는 게 맞다. "YAML도 고치고 자동화 코드도 고쳐야 한다"는 부담의 상당 부분이 실은 이 중복에서 온다.</p>
+
+      <h2><span class="n">05</span>제안 3 — 셀렉터 유지보수를 편집에서 리뷰로 내린다</h2>
+      <p>가장 자주 발생하는 유지보수는 새 시나리오 작성이 아니다. <strong>화면이 조금 바뀌어서 셀렉터가 낡는 것</strong>이다. 그리고 이걸 위한 재료가 이미 저장소에 다 깔려 있다. 지난 글에서 만든 셀프힐링 토대다.</p>
+
+      <div class="diagram">
+        <div class="stack">
+          <div class="layer own"><div class="t">있는 것</div><div class="d">baseline.json (초록 실행에서 뜬 요소 지문) + heal-report.json (무엇이 힐링으로 겨우 살았나) + nightly cron</div></div>
+          <div class="layer own"><div class="t">한 스텝 추가</div><div class="d">힐링이 발동한 요소를 지문 기준으로 selectors/*.yaml 수정안으로 바꿔 봇이 PR을 연다</div></div>
+          <div class="layer ext"><div class="t">사람이 하는 일</div><div class="d">한 줄 diff 보고 머지 또는 닫기. 편집이 아니라 판단만 한다</div></div>
+        </div>
+      </div>
+
+<pre><code><span class="tok-c"># nightly 워크플로 마지막에 붙는다</span>
+- <span class="tok-a">name</span>: Open selector drift PR
+  <span class="tok-a">if</span>: always()
+  <span class="tok-a">run</span>: |
+    node automation/ci/propose-selector-fix.js   <span class="tok-c"># heal-report.json → selectors/*.yaml 패치</span>
+    git diff --quiet selectors/ || gh pr create \
+      --title "chore(selectors): 힐링으로 감지된 셀렉터 드리프트" \
+      --body-file test-results/heal-summary.md \
+      --label selector-drift</code></pre>
+
+      <p>가드레일이 이 제안의 절반이다. 없으면 봇이 조용히 테스트를 갉아먹는다.</p>
+      <ul class="clean">
+        <li><strong>봇은 <code>selectors/*.yaml</code>만 건드린다.</strong> <code>testcases/</code>는 사람의 의도가 담긴 파일이라 자동 수정 금지. 플로우가 바뀌었다는 뜻이면 PR이 아니라 이슈를 열어야 한다.</li>
+        <li><strong>자동 머지 금지.</strong> 힐링은 "아마 이거일 것"이라는 추측이다. 통과했다는 사실이 맞다는 증거는 아니다.</li>
+        <li><strong>신뢰도 임계값 아래는 PR 대신 이슈.</strong> 후보가 애매할 때 패치를 던지면 리뷰어가 판단할 근거가 없다.</li>
+        <li><strong>배포 게이트에서는 힐링을 실패로 취급(strict).</strong> nightly에서는 살려서 관찰하고, 배포 직전에는 낡은 셀렉터를 통과시키지 않는다.</li>
+      </ul>
+
+      <p>방향 자체는 업계에서도 같은 결론으로 수렴하는 것 같다. UI가 바뀌면 <em>고쳐야 할 깨진 테스트</em>가 아니라 <em>리뷰 가능한 힐링 diff</em>가 나오게 만든다는 것, 그리고 CSS나 XPath를 힐링할 때 role 기반 로케이터로 다시 써주면 패치를 머지하는 것만으로 스위트가 점점 안정적인 로케이터로 이사한다는 것. 후자는 특히 이 저장소에 맞는 얘기다. <code>selectors/home.yaml</code>에는 <code>section:has([role='tablist']) .swiper-slide-active a[href*='/product/']</code>처럼 깨지기 쉬운 CSS가 아직 남아 있다.</p>
+
+      <h2><span class="n">06</span>제안 4 — 자동화 코드가 안 커지게 계약을 박는다</h2>
+      <p>마지막 고민은 "YAML도 유지보수하고 자동화 코드도 유지보수해야 한다"였다. 이건 구조상 완전히 없앨 수는 없지만, <strong>같이 커지는 걸 막을</strong> 수는 있다. 두 가지다.</p>
+
+      <h3>(1) 어휘 동결, 확장은 custom으로만</h3>
+      <p>새 동작이 필요할 때마다 <code>action</code>을 추가하면 인터프리터의 <code>switch</code>가 무한히 자란다. 대신 11개를 동결하고, 표현이 안 되는 건 전부 <code>action: custom</code> + <code>name</code>으로 보낸다. 이미 그렇게 설계돼 있으니 규칙으로 못 박기만 하면 된다. 그리고 YAML에 <code>schema_version</code>을 넣어두면, 나중에 어휘를 진짜 바꿔야 할 때 29개를 한꺼번에 마이그레이션하지 않고 버전별로 다르게 해석할 여지가 생긴다.</p>
+
+      <h3>(2) 브라우저 없이 3초에 끝나는 계약 테스트</h3>
+      <p>이게 실질적으로 제일 이득이 크다. 실제 브라우저를 띄우지 않고, <strong>YAML과 인터프리터가 서로 말이 되는지만</strong> 확인하는 테스트다.</p>
+
+<pre><code><span class="tok-c">// automation/tests/contract.spec.ts — 네트워크도 브라우저도 필요 없다</span>
+<span class="tok-k">for</span> (<span class="tok-k">const</span> tc <span class="tok-k">of</span> loadTestCases(<span class="tok-s">'testcases'</span>)) {
+  test(<span class="tok-s">`contract ${tc.id}`</span>, () =&gt; {
+    <span class="tok-k">for</span> (<span class="tok-k">const</span> s <span class="tok-k">of</span> tc.steps) {
+      expect(SUPPORTED_ACTIONS).toContain(s.action);              <span class="tok-c">// 어휘 계약</span>
+      <span class="tok-k">if</span> (needsElement(s.action)) expect(selectors.elements[s.target!]).toBeDefined();
+      <span class="tok-k">if</span> (s.action === <span class="tok-s">'custom'</span>) expect(customSteps[s.name!]).toBeDefined();
+      <span class="tok-k">if</span> (s.value) expect(() =&gt; resolveTemplate(s.value!, fixtures)).not.toThrow();
+    }
+  });
+}</code></pre>
+
+      <p>지난 글에서 겪은 문제가 정확히 이걸 필요로 했다. 작업 환경이 <code>lomastore.com</code>에 못 붙어서 Playwright를 아예 못 돌렸고, 헤드리스 크롬을 띄우려니 OS 라이브러리가 없었다. 계약 테스트는 그런 환경에서도 돈다. 대상 사이트가 살아 있든 죽어 있든 <strong>"29개 YAML이 여전히 실행 가능한 상태인가"에 즉시 답</strong>이 나온다. 인터프리터를 리팩터할 때도, 셀렉터 이름을 바꿀 때도 마찬가지다.</p>
+
+      <h2><span class="n">07</span>순서와 비용</h2>
+      <p>네 개를 동시에 하면 안 된다. 효과 대비 비용 순으로 줄을 세우면 이렇게 된다.</p>
+
+      <ol class="steps">
+        <li><strong>계약 테스트 + 검증기를 저장소로.</strong> 브라우저가 필요 없어서 어디서든 돌고, 가장 흔한 실수(존재하지 않는 target)를 즉시 잡는다. 반나절.</li>
+        <li><strong><code>pull_request</code> 트리거 추가.</strong> 워크플로에 트리거 몇 줄과 잡 하나. 이때부터 "잊어서 안 돌린 검증기"가 사라진다.</li>
+        <li><strong>문서 생성기 + drift 게이트.</strong> README 손 갱신이 사라지고, 30일 경과 목록이 자동으로 노출된다. 엑셀 산출물은 여기 얹으면 덤이다.</li>
+        <li><strong>스키마를 에디터에 물리기.</strong> 편집 경험이 좋아지는 만큼, 굳이 엑셀을 도입할 이유가 줄어든다.</li>
+        <li><strong>셀렉터 드리프트 봇 PR.</strong> 가장 이득이 크지만 가드레일 설계가 필요하다. 힐링 STEP 4, 5가 끝난 뒤에.</li>
+      </ol>
+
+      <h2><span class="n">08</span>안 하기로 한 것</h2>
+      <ul class="clean">
+        <li><strong>엑셀 양방향 동기화.</strong> 충돌 해결 로직이 본업이 된다. 단방향 산출물까지만.</li>
+        <li><strong>자체 테스트케이스 관리 도구(웹 UI) 구축.</strong> 29개짜리 스위트에 관리 도구를 만드는 건 배보다 배꼽이다. git과 PR이 이미 이력, 리뷰, 권한을 다 준다.</li>
+        <li><strong><code>testcases/</code>를 봇이 고치기.</strong> 셀렉터는 사실이고 테스트케이스는 의도다. 의도는 사람이 쓴다.</li>
+        <li><strong>YAML을 버리고 TypeScript로 테스트케이스 작성.</strong> 타입 안정성은 얻지만 "사람이 읽는 시나리오"라는 성질을 잃는다. 그건 이 저장소 설계의 출발점이었다.</li>
+      </ul>
+
+      <div class="tldr">
+        <b>정리 세 줄.</b> ① 편집이 불편한 진짜 이유는 포맷이 아니라 <strong>참조 관계를 사람이 암기</strong>해야 하기 때문이다. 스키마를 에디터에 물리면 상당 부분 사라진다. ② 검증기는 존재만으로는 값이 없다. <strong>머지를 막을 수 있어야</strong> 값이 생긴다. ③ 손으로 유지하는 문서는 언젠가 거짓말을 한다. <strong>사본은 만들지 말고 생성</strong>하고, 어긋나면 CI가 실패하게 둔다.
+      </div>
+
+      <hr>
+      <p>다음 작업은 5번(봇 PR)보다 1, 2번이 먼저다. 셀프힐링 STEP 4를 붙이기 전에 계약 테스트와 PR 게이트를 깔아두는 게 순서상 맞다. 힐링이 실제로 셀렉터를 바꿔 통과시키기 시작하면, 그 변경이 정당한지 자동으로 검사해줄 그물이 먼저 있어야 하니까.</p>
+
+    </article>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="tags">
+      <span class="tag">#test-automation</span>
+      <span class="tag">#ci-cd</span>
+      <span class="tag">#yaml</span>
+      <span class="tag">#json-schema</span>
+      <span class="tag">#github-actions</span>
+      <span class="tag">#testcase-management</span>
+      <span class="tag">#devlog</span>
+    </div>
+    <p style="margin-top:18px">Taeik's Dev Log — 테스트 자동화 기록<br>
+    저장소: <b>TIKim1988 / test-automation-skeleton</b> (private) — 이 글은 GitHub Pages로 게시됨 — <a href="self-healing-locator.html">← 지난 글: 셀렉터가 낡아도 안 깨지게, 셀프힐링 토대 만들기</a></p>
+  </div>
+</footer>
+
+<script>
+  function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}
+  function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeNav()});
+</script>
+
+</body>
+</html>
