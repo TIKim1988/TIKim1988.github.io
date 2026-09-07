@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>23개 TC를 다시 검토한 로마스토어 E2E 재설계 | Taeik's Dev Log</title><meta name="description" content="23개 TC, 136개 step, 49개 assertion을 다시 검토했다. 검증 누락과 실행 오류의 근거, 단계별 재설계, 실제 수정 결과를 정리한 기록."><link rel="canonical" href="https://tikim1988.github.io/lomastore-e2e-redesign.html"><style>
+  :root{
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#26303d; --text:#e6edf3; --muted:#9aa7b4;
+    --accent:#58a6ff; --accent2:#7ee787; --warn:#e3b341; --danger:#ff7b72;
+    --code:#0b1017;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",Roboto,"Apple SD Gothic Neo",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);line-height:1.75;font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  header.hero{
+    border-bottom:1px solid var(--border);
+    background:radial-gradient(1200px 400px at 20% -10%,rgba(88,166,255,.14),transparent 60%),var(--bg);
+    padding:72px 0 44px;
+  }
+  .kicker{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+    color:var(--accent2);background:rgba(126,231,135,.08);
+    border:1px solid rgba(126,231,135,.25);border-radius:999px;padding:5px 12px;margin-bottom:20px;
+  }
+  h1{font-size:34px;line-height:1.28;margin:0 0 16px;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:18px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:26px;color:var(--muted);font-size:14px;font-family:var(--mono)}
+  .meta b{color:var(--text);font-weight:600}
+  main{padding:8px 0 60px}
+  article h2{font-size:24px;margin:52px 0 14px;letter-spacing:-.01em}
+  article h2 .n{font-family:var(--mono);color:var(--accent);font-size:16px;margin-right:10px}
+  article h3{font-size:18px;margin:30px 0 8px;color:var(--text)}
+  p{margin:14px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  strong{color:#fff}
+  .tldr{
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);
+    border-radius:10px;padding:18px 20px;margin:28px 0;
+  }
+  .tldr b{color:var(--accent2)}
+  ul.clean{padding-left:20px;margin:14px 0}
+  ul.clean li{margin:8px 0}
+  pre{
+    background:var(--code);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.6;
+    margin:18px 0;
+  }
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface2);border:1px solid var(--border);
+    padding:1.5px 6px;border-radius:5px;color:#d7e2ee}
+  pre code{background:none;border:none;padding:0;color:#c9d5e1}
+  .tok-c{color:#6b7683}      /* comment */
+  .tok-k{color:var(--danger)} /* keyword */
+  .tok-s{color:var(--accent2)} /* string */
+  .tok-a{color:var(--accent)}  /* attr/key */
+  .diagram{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:24px;margin:26px 0;font-family:var(--mono);font-size:13px;color:var(--muted);
+    line-height:1.5;overflow-x:auto;
+  }
+  .stack{display:grid;gap:10px}
+  .layer{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface2)}
+  .layer .t{color:var(--text);font-family:var(--sans);font-weight:600;font-size:14px}
+  .layer .d{font-size:12.5px;margin-top:3px}
+  .layer.own{border-color:rgba(88,166,255,.5)}
+  .layer.ext{border-style:dashed;opacity:.85}
+  .callout{
+    border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:22px 0;background:var(--surface);
+  }
+  .callout.warn{border-left:3px solid var(--warn)}
+  .callout.warn .h{color:var(--warn)}
+  .callout .h{font-weight:700;display:block;margin-bottom:6px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+  .steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px dashed var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:0;top:9px;
+    width:28px;height:28px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent);font-family:var(--mono);font-size:13px;display:grid;place-items:center;
+  }
+  hr{border:none;border-top:1px solid var(--border);margin:44px 0}
+  .quote{border-left:3px solid var(--accent);padding:4px 0 4px 18px;color:var(--muted);font-style:italic;margin:22px 0}
+  footer{border-top:1px solid var(--border);padding:34px 0 60px;color:var(--muted);font-size:14px}
+  footer a{color:var(--accent)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--border);
+    border-radius:999px;padding:3px 10px;background:var(--surface)}
+  @media(max-width:600px){h1{font-size:27px}body{font-size:16px}article h2{font-size:21px}}
+
+  /* --- 고정 LNB 사이드바 --- */
+  body{padding-left:260px}
+  .nav-toggle,.lnb-overlay,.lnb .close{display:none}
+  .lnb{position:fixed;top:0;left:0;height:100vh;width:260px;background:var(--surface);
+    border-right:1px solid var(--border);z-index:40;padding:28px 18px 40px;overflow-y:auto}
+  .lnb .brand{font-family:var(--mono);font-size:12.5px;color:var(--accent2);letter-spacing:.05em;margin-bottom:8px}
+  .lnb .home{display:block;color:var(--text);font-weight:600;margin-bottom:8px;font-size:17px}
+  .lnb .home:hover{text-decoration:none;color:var(--accent)}
+  .lnb .home.active{color:var(--accent)}
+  .lnb .folder{margin:22px 0 6px;font-size:12.5px;color:var(--muted);font-family:var(--mono);
+    display:flex;align-items:center;gap:7px}
+  .lnb ul{list-style:none;padding:0;margin:0}
+  .lnb li a{display:block;padding:9px 11px;border-radius:8px;color:var(--text);font-size:14px;line-height:1.45}
+  .lnb li a:hover{background:var(--surface2);text-decoration:none}
+  .lnb li a.active{background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.35);color:var(--accent)}
+  .lnb li .date{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  /* 모바일: 사이드바 접고 햄버거로 전환 */
+  @media(max-width:860px){
+    body{padding-left:0}
+    .nav-toggle{display:grid;position:fixed;top:14px;left:14px;z-index:50;width:44px;height:44px;border-radius:10px;
+      background:rgba(22,27,34,.9);backdrop-filter:blur(6px);border:1px solid var(--border);color:var(--text);
+      cursor:pointer;place-items:center;font-size:18px;line-height:1}
+    .nav-toggle:hover{border-color:var(--accent);color:var(--accent)}
+    .lnb{transform:translateX(-100%);transition:transform .25s ease;z-index:70;width:280px;max-width:82vw}
+    .lnb.open{transform:none}
+    .lnb .close{display:block;position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);
+      font-size:22px;cursor:pointer;line-height:1}
+    .lnb .close:hover{color:var(--text)}
+    .lnb-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;visibility:hidden;
+      transition:opacity .2s;z-index:60}
+    .lnb-overlay.open{opacity:1;visibility:visible}
+  }
+
+.table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--border);border-radius:10px}table{border-collapse:collapse;width:100%;font-size:14px;min-width:550px}th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}th{background:var(--surface2);color:var(--accent2)}td code{overflow-wrap:anywhere}h2,h3{scroll-margin-top:24px}.toc{background:var(--surface);padding:20px 24px;border:1px solid var(--border);border-radius:12px}.toc ol{padding-left:20px}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.stat{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.stat b{display:block;font-size:27px;color:var(--accent2)}.stat span{font-size:13px;color:var(--muted)}@media(max-width:600px){.stat-grid{gap:6px}.stat{padding:10px}.stat b{font-size:23px}.table-wrap{max-width:100%}}
+</style></head><body><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+<div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
+<nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
+  <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
+  <div class="brand">Taeik's Dev Log</div>
+  <a class="home" href="index.html">🏠 홈</a>
+
+  <div class="folder">📁 테스트케이스 관리 (TC)</div>
+  <ul>
+    <li><a href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
+    <li><a href="testcase-cicd.html">손으로 고치는 게 병목이다 — 테스트케이스 CI/CD 다시 짜기<span class="date">2026-07-30</span></a></li>
+  </ul>
+
+  <div class="folder">📁 자동화 엔진</div>
+  <ul>
+    <li><a class="active" href="lomastore-e2e-redesign.html">23개 TC를 다시 검토한 로마스토어 E2E 재설계<span class="date">2026-09-08</span></a></li>
+    <li><a href="lomastore-e2e-redesign.html">23개 TC를 다시 검토한 로마스토어 E2E 재설계<span class="date">2026-09-08</span></a></li>
+    <li><a href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
+    <li><a href="self-healing-locator.html">셀렉터가 낡아도 안 깨지게 — 셀프힐링 토대 만들기<span class="date">2026-07-27</span></a></li>
+  </ul>
+</nav><header class="hero"><div class="wrap"><span class="kicker">E2E REVIEW / PLAYWRIGHT</span><h1>23개 TC를 다시 검토한<br>로마스토어 E2E 재설계</h1><p class="lede">버튼이 보인다는 사실만으로 구매 흐름을 검증했다고 말할 수 있을까. 기존 테스트의 기대 결과와 실행 구조를 다시 확인하고, 고칠 순서와 실제 검증 결과를 정리했어.</p><div class="meta"><span>Taeik</span><span>게시 2026-09-08</span><span>초기 검토 2026-09-07</span></div></div></header><main><div class="wrap"><article><div class="stat-grid"><div class="stat"><b>23</b><span>검토한 테스트케이스</span></div><div class="stat"><b>48 / 49</b><span>기존 노출 확인 assertion</span></div><div class="stat"><b>11</b><span>제안한 검증 묶음</span></div></div><div class="callout"><strong>기록을 읽는 기준</strong><p>아래 1~7장은 9월 7일 수정 전 검토야. 이후 구현과 실행 결과는 마지막 업데이트에서 구분했어. 11개는 검증 목적별 묶음이고, 현재 실행 테스트 개수를 뜻하지 않아.</p><p><a href="lomastore-e2e-review.md" download>재설계 검토 문서 내려받기</a></p></div><nav class="toc" aria-label="글 목차"><strong>목차</strong><ol><li><a href="#section-1">1. 확인 범위와 결과</a></li><li><a href="#section-2">2. 우선 수정할 발견 사항</a></li><li><a href="#section-3">3. 기존 23개 TC 재분류</a></li><li><a href="#section-4">4. 추천 구조</a></li><li><a href="#section-5">5. 운영 서버와 테스트 환경의 역할</a></li><li><a href="#section-6">6. 구현 순서와 완료 기준</a></li><li><a href="#section-7">7. 이번 검토의 재현 명령</a></li><li><a href="#implementation">8. 수정과 재검증 결과</a></li></ol></nav><p>검토일: 2026-09-07. 아래 내용은 수정 전 기준이며, 이후 구현과 재검증 결과는 게시물 하단에 따로 기록했어.</p><p><strong>추천: Playwright와 기존 TC ID는 유지하고, CSV는 검증 명세를 관리하는 용도로 정리하자. 실제 구매 흐름은 TypeScript spec과 테스트별 fixture에서 직접 검증하는 구조가 적합해.</strong></p><p>현재 가장 큰 문제는 케이스 수가 아니라 성공 판정의 약함이야. 화면이 보여도 수량, 상품, 금액, 선택 상태가 잘못될 수 있는데 이를 구분하지 못해. 전면 교체보다 기존 실행 결함을 먼저 복구하고, 핵심 흐름부터 점진적으로 이관하는 게 좋아.</p><h2 id="section-1">1. 확인 범위와 결과</h2><div class="table-wrap"><table><thead><tr><th>항목</th><th>확인 결과</th></tr></thead><tbody><tr><td>TC 원본과 생성물</td><td>CSV 23개 TC, 136개 step, YAML 23개, 동기화 검사 통과</td></tr><tr><td>실행 분류</td><td>smoke 8개, regression 15개</td></tr><tr><td>assertion</td><td>총 49개 중 <code>assert_visible</code> 48개, <code>assert_text</code> 1개</td></tr><tr><td>skip 조건</td><td>PRODUCT-001, PRODUCT-002가 known issue에 걸림. 유일한 텍스트 assertion은 PRODUCT-001에 있음</td></tr><tr><td>메타데이터</td><td>23개 모두 active, enabled=true, precondition 공란, last_verified=2026-07-10</td></tr><tr><td>로컬 정적 검사</td><td>TypeScript 검사, 23개 테스트 목록 로딩, CSV 동기화 검사 통과</td></tr><tr><td>리포트 스크립트</td><td>문법 검사 실패, 결과 요약 단계가 실행되지 않음</td></tr><tr><td>smoke 재실행</td><td>8개 모두 Chromium 시작 단계에서 실행 권한 오류. 사이트 동작 검증에 도달하지 못함</td></tr><tr><td>현재 화면 조회</td><td>홈, 스토어, 대표 비회원 상품 상세, 검색 결과 페이지 확인</td></tr><tr><td>미확인</td><td>장바구니 추가 완료, 주문서 현재 DOM, 실제 구매 성공, 전체 회귀 실행, 원격 CI 최신 결과</td></tr></tbody></table></div><p>smoke JSON의 <code>unexpected=8</code>은 서비스 결함 8건을 뜻하지 않아. 모두 <code>bootstrap_check_in ... Permission denied (1100)</code>으로 브라우저가 종료됐어. skip도 테스트 본문 안에 있어 브라우저 생성 실패보다 먼저 적용되지 않았어.</p><p>현재 화면은 앱 Browser에서 별도로 조회했어. 검색창 입력 시도도 도구의 locator deadline 오류로 끝났고, 검색 결과는 홈에서 확인한 검색 URL로 직접 열었어. 따라서 검색 제출 흐름 전체가 통과했다고 판단할 수 없어.</p><p>초기 검토에서는 실사이트 장바구니 변경 범위가 확정되지 않아 조회까지만 진행했어. 이후 수정 단계에서 비회원 장바구니와 주문서 진입을 재검증했어. 최종 결제와 주문 생성은 범위 밖이야.</p><h2 id="section-2">2. 우선 수정할 발견 사항</h2><p>여기서 P1, P2는 <strong>자동화 개선 우선순위</strong>야. 서비스 결함 심각도와는 구분해.</p><h3>F01. P1: 결과 요약 스크립트가 문법 오류로 실행되지 않아</h3><ul class="clean"><li>근거: <code>scripts/summarize-results.mjs:33-43</code>, 특히 39행.</li><li>HTML을 감싸는 템플릿 문자열 내부의 <code>test-health.md</code>에 백틱을 다시 사용해 문자열이 끊겨.</li><li><code>node --check scripts/summarize-results.mjs</code>와 실제 스크립트 실행 모두 <code>SyntaxError: Unexpected identifier &#x27;test&#x27;</code>를 반환했어.</li><li><code>.github/workflows/scheduled-tests.yml</code>의 요약 단계가 결과를 만들지 못해. 요약 output과 이메일 첨부 생성도 영향을 받아.</li><li>수정: HTML의 <code>&lt;code&gt;test-health.md&lt;/code&gt;</code>로 바꾸고, CI에 <code>.mjs</code> 문법 검사를 추가하자. 이번 TypeScript 검사만으로는 이 오류가 검출되지 않았어.</li></ul><h3>F02. P1: 상품과 주문 결과가 틀려도 테스트가 통과할 수 있어</h3><ul class="clean"><li>근거: <code>testcase-management/steps.csv:17-23</code>, <code>59-67</code>, <code>automation/runner/interpreter.ts:60-67</code>.</li><li>CART-002는 수량 증가, 감소 후 주문 버튼만 확인해. 수량이 그대로여도 통과할 수 있어.</li><li>CHECKOUT-003은 결제수단 클릭 후 같은 radio의 노출만 확인해. 실제 선택 상태, 다른 수단의 해제 상태를 검증하지 않아.</li><li>SEARCH-002, STORE-002는 정렬 후 제목이나 정렬 링크만 확인해. 상품 가격 순서는 검증하지 않아.</li><li>HOME-002는 클릭한 탭의 노출만 확인해. 선택 상태와 대응 패널을 확인하지 않아.</li><li>PRODUCT-003, CART-001은 추가한 상품의 식별값, 수량, 금액을 확인하지 않아.</li><li>수정: 수량 전후 값, 선택 상태, 상품 행의 일치, 금액 계산, 정렬 결과를 기대 결과로 정하자. 보이는지 확인하는 assertion 자체는 필요하지만 결과 검증을 대신할 수 없어.</li></ul><h3>F03. P1: 전역 셀렉터 병합이 다른 화면의 정의를 덮어써</h3><ul class="clean"><li>근거: <code>automation/runner/selectors.ts:10-16</code>, <code>selectors/search.yaml:29-34</code>, <code>selectors/store.yaml</code>.</li><li><code>Object.assign</code>으로 같은 이름의 element를 아무 검증 없이 덮어써.</li><li>실제 <code>loadSelectors()</code> 호출 결과, <code>sort_price_asc</code>는 스토어의 <code>role: link</code>, <code>name: 가격낮은순</code>으로 결정됐어. 검색 파일의 <code>낮은가격순</code> 정의는 사라져.</li><li>중복 element 이름은 8종이며, 그중 가격 오름차순과 내림차순은 파일 간 값도 달라. 수량, 찜하기도 전역 이름을 공유해.</li><li>수정: 이관 전에는 <code>search_sort_price_asc</code>, <code>store_sort_price_asc</code>처럼 이름을 분리하고 중복 키를 즉시 오류로 처리하자. 이관 후에는 SearchPage, StorePage 등 각 화면 안에서 locator를 소유하자.</li></ul><h3>F04. P1: 현재 검색 UI와 locator의 역할이 달라</h3><ul class="clean"><li>근거: <code>selectors/search.yaml:8-10</code>, <code>17-34</code>, 2026-09-07 현재 DOM.</li><li>검색창은 <code>searchbox &quot;상품 검색&quot;</code>인데 코드는 <code>textbox</code>로 찾고 있어. 저장된 과거 실패 화면에서도 같은 차이를 확인했어.</li><li>검색 결과 정렬은 현재 <code>button &quot;인기순&quot;</code>, <code>button &quot;낮은가격순&quot;</code>이야. 검색 YAML에는 <code>link</code>로 정의되어 있어.</li><li>반면 스토어 정렬은 현재도 <code>link &quot;가격낮은순&quot;</code>이야. 검색과 스토어를 같은 locator로 처리할 수 없어.</li><li>수정: 검색 영역을 먼저 특정하고 현재 역할로 변경하자. 입력 역할 수정만으로 검색 전체가 복구됐다고 판단하면 안 돼. 입력, 제출, 검색어 반영, 결과 목록까지 다시 실행해야 해.</li></ul><h3>F05. P1: 주문자와 수령자 입력을 구별할 수 없어</h3><ul class="clean"><li>근거: <code>selectors/checkout.yaml:9-23</code>.</li><li>주문자 성함과 수령자 성함이 모두 전역 <code>getByRole(&#x27;textbox&#x27;, { name: &#x27;성함&#x27; })</code>으로 해석돼. 휴대폰번호도 동일해.</li><li>두 입력이 함께 존재하면 strict mode 오류가 나고, 한 입력만 보이면 잘못된 대상에 입력할 수 있어.</li><li>확인된 사실은 <strong>정의가 같고 범위 구분이 없다는 것</strong>이야. 주문서 현재 DOM은 이번에 확인하지 못했어.</li><li>수정: 주문자와 배송지 영역, 연결된 label 또는 고유 test id로 범위를 분리하자. 재설계 검증에는 두 사람의 서로 다른 이름과 번호를 써서 잘못된 입력을 잡아내자.</li></ul><h3>F06. P2: quarantine 설정은 실행에 반영되지 않고, skip 사유도 재평가가 필요해</h3><ul class="clean"><li>근거: <code>automation/tests/run-testcases.spec.ts:20-24</code>, <code>30-45</code>, <code>automation/runner/known-issues.ts</code>.</li><li><code>manual</code>, <code>enabled=false</code>만 제외하고 <code>quarantine</code>은 실행해. CSV에 quarantine을 적어도 실행 분리가 되지 않아.</li><li>CSV는 PRODUCT-001, PRODUCT-002까지 모두 active지만 코드가 별도로 skip시켜. 상태 정보가 두 곳에서 달라.</li><li>현재 대표 상품의 상품명 heading은 main 범위에서 정확한 이름으로 1개, <code>총 1개</code>도 정확한 텍스트로 1개였어. <code>product-title</code> test id는 0개였어.</li><li>test id가 없다는 사실만으로 자동화 불가능을 뜻하지 않아. 현재 DOM에서는 상품명 검증을 재개할 대안이 확인돼. 수량 변경 후 상태의 안정성은 추가 실행이 필요해.</li><li>수정: 상태, 사유, 담당자, 이슈, 재검토일을 명세 한 곳에서 관리하자. quarantine은 별도 실행 범위로 분리하고 정상 통과율에 섞지 말자.</li></ul><h3>F07. P2: 장바구니 준비 단계는 있지만 성공을 보장하지 않아</h3><ul class="clean"><li>근거: <code>testcase-management/steps.csv:31-39</code>, <code>automation/runner/interpreter.ts:39-46</code>, 기존 PRODUCT-003 실패 화면.</li><li>상품 상세 이동, 담기 클릭, <code>/cart</code> 이동을 하는 케이스가 11개야. CART-001과 checkout에도 준비 단계가 이미 있어.</li><li>담기 클릭 직후 성공 상태를 확인하지 않고 문서 이동을 해. 추가 완료 전 이동, 클라이언트 초기화 시점, 서버 응답 실패 등을 구별하지 못해.</li><li>과거 실패 화면에서 장바구니가 비어 있었다는 사실은 확인돼. <strong>원인이 요청 중단이나 초기화 경쟁이라는 건 가설</strong>이야. 새 trace와 응답, UI 완료 상태 대조가 필요해.</li><li>수정: 테스트별 <code>cartWithProduct</code> fixture에서 대상 상품, 구매 가능 상태를 확인하고 담기 완료 후 해당 상품 행과 수량을 확인하자. UI 담기 자체를 검증하는 spec은 이 과정을 테스트 본문에 남기자.</li><li><code>test-health.md</code>의 준비 단계 누락 진단은 현재 코드와 맞지 않아. 준비 존재 여부와 준비 성공 여부를 나눠 기록해야 해.</li></ul><h3>F08. P2: 입력 검증과 실행 결과 분류에도 빈틈이 있어</h3><ul class="clean"><li><code>automation/runner/loader.ts:46-53</code>: 존재하지 않는 fixture 경로는 오류 대신 빈 문자열이 돼. <code>${checkout.missing}</code>을 실제 함수에 전달해 빈 문자열 반환을 확인했어.</li><li><code>scripts/sync-testcases.mjs</code>: TC ID 중복 검사는 있지만 생성 경로 중복 검사, fixture 변수 존재 검사, custom 함수 등록 여부 검사는 없어. 이 부분은 코드 검토로 확인했고 잘못된 CSV를 저장소에 주입하진 않았어.</li><li><code>scripts/summarize-results.mjs:8,18-20</code>: flaky를 실패 수에 더하면서 마지막 시도가 실패인 항목만 목록에 담아. 문법 오류 수정 후에도 재시도 통과 건의 숫자와 상세 목록이 어긋날 수 있어.</li><li>같은 스크립트는 최상위 <code>errors</code>를 집계하지 않아. workflow의 최종 판정도 요약의 failed 값에 의존해. 테스트 프로세스 종료 상태와 실행 오류를 함께 반영해야 해.</li><li>수정: 누락 변수, 중복 생성 경로와 키는 실행 전에 실패시키자. 보고서는 passed, failed, flaky, skipped, 실행 오류를 분리하고 재시도별 원인을 보존하자.</li></ul><h2 id="section-3">3. 기존 23개 TC 재분류</h2><p>아래 S01~R06은 <strong>11개 검증 묶음</strong>이야. 실행 테스트를 정확히 11개로 줄인다는 뜻은 아니야. 정상, 취소, 실패 분기는 독립된 테스트로 유지하고 setup만 공유하자. 기존 ID는 <code>legacy_ids</code> 같은 필드로 모두 추적해.</p><div class="table-wrap"><table><thead><tr><th>묶음</th><th>기존 TC</th><th>처리</th><th>새 성공 기준</th></tr></thead><tbody><tr><td>S01 홈과 탐색</td><td>HOME-001, HOME-002</td><td>탐색 묶음으로 정리, 탭 변형은 회귀 분리 가능</td><td>주요 메뉴 목적지, 인기상품 목록, 탭 선택 상태와 대응 패널</td></tr><tr><td>S02 검색 정상</td><td>SEARCH-001</td><td>강화</td><td>검색어 반영, 결과 목록, 알려진 상품의 식별값</td></tr><tr><td>S03 카테고리</td><td>STORE-001</td><td>강화</td><td>선택한 카테고리와 URL, 해당 상품 목록</td></tr><tr><td>S04 비회원 구매 경로</td><td>PRODUCT-001, PRODUCT-003, CART-001, CHECKOUT-001, CHECKOUT-005</td><td>중복 화면 노출을 핵심 여정으로 통합</td><td>상품 식별값, 수량, 상세에서 장바구니와 주문서로 이어지는 금액 정합성, 결제 직전 상태</td></tr><tr><td>S05 비회원 접근 제한</td><td>PRODUCT-004, PRODUCT-005</td><td>같은 목적의 서로 다른 진입 분기로 유지</td><td>제한 상품 안내, 찜하기 후 로그인 목적지, 원래 경로 복귀 정보</td></tr><tr><td>R01 정렬</td><td>SEARCH-002, STORE-002</td><td>검증 알고리즘 공유, 화면별 실행 분리</td><td>선택 정렬과 실제 표시 판매가의 단조 증가, 감소</td></tr><tr><td>R02 검색 결과 없음</td><td>SEARCH-003</td><td>강화</td><td>결정적인 미일치 데이터, 결과 0개와 빈 상태, 정상 검색으로 복구</td></tr><tr><td>R03 수량과 금액</td><td>PRODUCT-002, CART-002</td><td>검증 목적 통합, 상세와 장바구니 분리 실행</td><td>1→2→1 수량, 항목금액, 최소 수량 상태, 장바구니 재진입 유지</td></tr><tr><td>R04 삭제와 취소</td><td>CART-003, CART-004, CART-005</td><td>준비 공유, 3개 분기 독립</td><td>대상 상품만 삭제, 모두 비우기, 취소 시 상품과 수량 유지, 빈 상태</td></tr><tr><td>R05 주문서</td><td>CHECKOUT-002, CHECKOUT-003, CHECKOUT-004</td><td>화면 요소 나열을 입력과 선택 검증으로 교체</td><td>주문자와 수령자 값 분리, 필수값 오류, 결제수단 선택과 해제, 약관의 정확한 내용 또는 목적지</td></tr><tr><td>R06 비회원 주문조회</td><td>ORDER-001</td><td>화면 기본 검사 유지, 제출 검증 별도</td><td>운영에서는 입력란과 버튼, 테스트 환경에서는 형식 오류와 본인 주문 조회</td></tr></tbody></table></div><p>S 묶음을 운영 smoke 후보로 추천해. 승인된 게스트 테스트 세션, 현재 구매 정책, 상품 가용성이 확보되어야 S04를 운영에서 자동 실행할 수 있어. R 묶음은 회귀 검증에 둬. 화면별 원인 분리가 어려워지면 거대한 여정 하나로 계속 합치지 말자.</p><p><strong>새로 필요한 위험 검증</strong>은 별도 후속 범위야. 기존 23개를 검증했다고 해서 다음까지 확보한 것으로 보지 말자.</p><div class="table-wrap"><table><thead><tr><th>위험</th><th>권장 검증 위치</th><th>필요한 전제</th></tr></thead><tbody><tr><td>옵션 필수, 품절, 최대 구매 수량</td><td>테스트 환경 UI와 API</td><td>고정 상품, 재고 및 옵션 정책</td></tr><tr><td>두 상품 중 하나만 삭제, 동일 상품 재추가</td><td>장바구니 회귀</td><td>독립 데이터, 재추가 시 병합 정책</td></tr><tr><td>할인, 배송비 경계값, 도서산간</td><td>계산 단위 테스트와 API, 대표 UI</td><td>확정 정책과 고정 가격</td></tr><tr><td>장바구니 이후 가격 또는 재고 변경</td><td>테스트 환경 통합 테스트</td><td>가격과 재고를 제어할 수 있는 준비 API</td></tr><tr><td>결제 성공, 실패, 취소, 중복 제출과 콜백</td><td>PG sandbox와 주문 API</td><td>sandbox 계정, 주문 조회, 정리 방법</td></tr><tr><td>인증 및 연령 제한 상태별 접근</td><td>테스트 환경 인증 fixture</td><td>미인증과 인증 계정, 명확한 정책</td></tr></tbody></table></div><h2 id="section-4">4. 추천 구조</h2><p>현재 저장소는 테스트 코드 저장소야. 서비스 백엔드 코드, 테스트 데이터 준비 API, staging 주소는 확인되지 않았어. 이를 이미 쓸 수 있다는 전제로 설계하지 말자.</p><pre><code>testcase-management/
+  test-cases.csv          ID, 위험, 전제조건, 기대 결과, 우선순위, 상태
+automation/
+  tests/
+    smoke/               핵심 사용자 여정
+    regression/          정렬, 수량, 삭제, 주문서의 독립 검증
+  pages/                 HomePage, SearchPage, ProductPage, CartPage, CheckoutPage
+  fixtures/              guestSession, productData, cartWithProduct
+  assertions/            상품 일치, 금액 계산, 목록 정렬 검증
+  legacy/                이관 중인 기존 YAML runner
+scripts/
+  validate-testcases     명세와 spec 연결, 중복 ID와 상태 검증
+  summarize-results      재시도와 실행 오류를 포함한 결과 집계</code></pre><ul class="clean"><li><strong>CSV는 검증할 내용을 관리해.</strong> <code>risk</code>, <code>expected_result</code>, <code>data_profile</code>, <code>environment</code>, <code>automation_ref</code>, <code>owner</code>, <code>issue</code>, <code>review_due</code>를 필요한 순서대로 추가하자. 클릭 단계는 spec과 Page Object가 소유해. 같은 실행 로직을 CSV와 코드 양쪽에서 따로 편집하지 말자.</li><li><strong>기존 YAML은 이관 기간에 유지해.</strong> 새 spec으로 옮긴 TC만 기존 runner에서 제외하고, 이관된 ID가 새 spec과 연결되는지 검사하자. 모든 TC가 추적될 때 steps.csv 생성 체계를 폐기할 수 있어.</li><li><strong>각 테스트의 상태는 독립적으로 준비해.</strong> 현재 Playwright의 <code>page</code> fixture 격리는 재사용할 수 있어. 앞선 테스트가 장바구니를 채웠다는 전제를 만들지 말자.</li><li><strong>전제 준비와 본 검증을 구분해.</strong> 장바구니 편집 테스트는 준비 fixture를 쓰고, 장바구니 담기 테스트는 담기 동작과 완료를 직접 검증하자. 준비 API가 없다면 UI 준비부터 사용해.</li><li><strong>Page Object는 UI 동작과 요소 범위를 담당해.</strong> 가격, 수량 등의 기대 결과는 spec에서 읽을 수 있게 남겨. custom action에 모든 판단을 숨기는 방식은 피하자.</li><li><strong>실제 상태를 기다려.</strong> 담기 완료 안내, 장바구니 상품 행, 수량 반영을 기다리고 필요한 API 응답을 보조 증거로 쓰자. 고정 sleep이나 무조건 timeout 확대를 해결책으로 삼지 말자.</li></ul><p>이 방향은 사용자에게 보이는 동작 검증, 독립된 테스트, 영역을 좁힌 locator를 권장하는 <a href="https://playwright.dev/docs/best-practices">Playwright 공식 원칙</a>과 테스트별 준비와 정리를 지원하는 <a href="https://playwright.dev/docs/test-fixtures">fixture 문서</a>에 근거했어. CSV 실행 DSL에서 직접 spec으로 옮기자는 선택은 이 저장소의 규모와 검증 요구를 바탕으로 한 추천이야.</p><p>Python으로 전체 재작성할 이득은 현재 근거에서 찾기 어려워. 이미 동작하는 TypeScript 기반 로딩과 Playwright 설정을 활용하는 편이 이관 범위를 줄여.</p><h2 id="section-5">5. 운영 서버와 테스트 환경의 역할</h2><div class="table-wrap"><table><thead><tr><th>구분</th><th>운영 smoke</th><th>테스트 환경 회귀</th></tr></thead><tbody><tr><td>목적</td><td>핵심 탐색과 승인된 구매 직전 경로의 사용 가능성</td><td>경계값, 실패 복구, 결제와 주문 정합성</td></tr><tr><td>데이터</td><td>승인된 격리 게스트 세션, 지정 상품의 사전 상태 확인</td><td>고정 상품, 계정, 재고, 가격, 테스트 주문</td></tr><tr><td>주문 및 PG</td><td>최종 주문 또는 결제 동작 전 종료</td><td>sandbox에서 성공, 실패, 취소, 중복과 지연 검증</td></tr><tr><td>외부 서비스</td><td>연결 지점의 UI 확인</td><td>통제된 응답과 sandbox를 목적에 맞게 분리</td></tr><tr><td>브라우저</td><td>먼저 Chromium 데스크톱</td><td>안정화 후 모바일 viewport, 실제 WebKit 등 우선순위별 확대</td></tr></tbody></table></div><p>최종 결제 버튼을 누르지 않는 현재 범위는 <strong>주문서 진입과 구매 준비 자동화</strong>야. 결제 완료까지 검증하는 E2E라고 부를 근거는 없어. 주문서 버튼 노출만으로 주문서 작성 완료나 결제 가능 상태를 판단하지 말자.</p><p>운영의 상품 가격은 숫자를 코드에 고정하기보다 같은 여정에서 상품금액과 수량이 각 화면에 일관되게 전달되는지 확인하자. 할인과 배송비의 정확한 정책 검증은 고정 데이터가 있는 환경에서 독립적으로 해. UI 금액을 서로 비교하는 검사만으로 서버 계산 정책까지 올바르다고 입증할 수는 없어.</p><h2 id="section-6">6. 구현 순서와 완료 기준</h2><div class="table-wrap"><table><thead><tr><th>순서</th><th>작업</th><th>완료 기준</th></tr></thead><tbody><tr><td>1</td><td>실행 신뢰성 복구</td><td>요약 스크립트 문법 정상, 누락 변수와 중복 키 차단, quarantine 분리, 실제 테스트 실패와 실행 오류 모두 CI 실패에 반영</td></tr><tr><td>2</td><td>대표 비회원 여정 1개 이관</td><td>새 게스트 상태에서 상품 확인, 담기 완료, 장바구니 식별값과 수량, 주문서 금액까지 증거 확보</td></tr><tr><td>3</td><td>23개 TC의 검증 목적 이관</td><td>위 매핑의 기존 ID 23개 모두 연결, 수량과 선택 상태 등 결과 assertion 추가, 분기별 실패 위치 구분</td></tr><tr><td>4</td><td>운영 지표와 회귀 확장</td><td>실행된 핵심 ID 누락 검사, flaky와 skip 별도 집계, 고정 데이터와 PG sandbox 확보 후 경계값 확대</td></tr></tbody></table></div><p>단계 2의 다음 확인 대상은 장바구니 변경 허용 범위와 실행 가능한 브라우저 환경이야. 현재 자료만으로 담기 실패의 원인을 확정해 코드를 고치면 안 돼.</p><p>추천 안정화 기준은 핵심 묶음이 <strong>서로 다른 새 세션에서 10회 연속 재시도 없이 통과</strong>하는 거야. 이는 제안 기준이고 달성한 수치가 아니야. 운영 반복 실행은 승인된 실행 범위와 빈도 안에서만 해. 장기 운영 품질은 이후 일별 실패, flaky, skip 추세로 따로 평가하자.</p><p>리포트에는 통과율 하나 대신 다음을 남기자.</p><ul class="clean"><li>실행 대상 수, 실제 실행 수, 통과, 실패, flaky, skipped, 실행 오류</li><li>핵심 TC ID의 실행 누락과 quarantine 재검토 기한 초과</li><li>데이터 준비 시간과 본 검증 시간, 실패한 <code>test.step</code></li><li>관련 TC ID, 상품 데이터 프로필, 환경, 재시도별 trace와 스크린샷</li></ul><h2 id="section-7">7. 이번 검토의 재현 명령</h2><pre><code>npm run testcases:check
+npx tsc --noEmit
+npx playwright test --list --reporter=list
+node --check scripts/sync-testcases.mjs
+node --check scripts/summarize-results.mjs</code></pre><p>앞의 네 검사는 통과했고 마지막 검사는 실패했어. 실제 smoke 시도는 아래처럼 기존 실패 산출물을 덮어쓰지 않는 별도 경로로 실행했어.</p><pre><code>TEST_TAGS=smoke npx playwright test --workers=1 --retries=0 \
+  --reporter=json --output=/tmp/loma-review-20260907-results \
+  &gt; /tmp/loma-review-20260907-smoke.json</code></pre><p>이 명령은 환경 권한 오류로 끝났고 사이트 동작은 검증하지 못했어. 로컬 로더를 직접 호출해 셀렉터 덮어쓰기, 누락 변수의 빈 문자열 치환, known issue 대상 2개, 장바구니 담기 준비를 포함한 11개 TC를 추가 확인했어.</p><p>기존 <code>test-results/</code>, <code>playwright-report/</code>, <code>test-health.md</code>는 과거 증거로만 참고했어. 현재 상태를 나타내는 새 성공 결과로 해석하지 않았어.</p><section id="implementation"><h2>8. 수정과 재검증 결과</h2><p>전체 23개 중 21개 통과, 2개 실패. 전체 실행에 포함된 smoke 8개는 모두 통과했어. flaky 0개, skip 0개, 실행 오류 0개야. Chromium 데스크톱, 재시도 0회, 새 비회원 컨텍스트에서 약 98초 동안 실행했어. 이 결과는 한 차례 전체 검증이며 장기 안정화 지표는 아니야.</p><h3>구현한 내용</h3><ul class="clean"><li>리포트 문법 오류를 고치고 통과, 실패, 재시도 통과, skip, 실행 오류를 분리했어. 빈 결과와 P1 skip도 성공으로 처리하지 않아. 실제 실패 2건이 있는 최종 결과에서 요약 스크립트가 <code>ok: false</code>와 종료 코드 1을 반환했어.</li><li>셀렉터를 화면별 이름과 영역으로 분리하고 중복 키를 차단했어. 검색은 현재 searchbox와 정렬 버튼을 사용하고, 주문자와 수령자는 고유 입력 ID로 구분해.</li><li>장바구니 담기 완료 안내를 기다린 뒤 상품 식별값, 수량, 금액을 확인해. 상품 상세, 장바구니, 주문서의 상품 합계를 연결해서 검증해.</li><li>수량 1→2→1과 금액 변화, 장바구니 새로고침 유지, 탭 선택 상태, 결제수단 선택과 해제, 서로 다른 주문자와 수령자의 입력값을 확인해.</li><li>기존의 상품 테스트 2개에 걸린 하드코딩 skip을 제거했어. 실행 상태는 CSV에서 관리하고 quarantine은 별도 재검증할 수 있어.</li><li>CSV 생성 전에 fixture 오타, 중복 출력 경로, 미등록 custom 함수, 셀렉터 중복과 scope 순환을 검사해. 23개 TC의 전제조건을 채우고 통과한 TC의 검증일을 갱신했어.</li><li>타입 검사, CSV 동기화 검사, 계약과 리포트 단위 테스트 16개가 통과했어. PR 정적 검사와 예약 실행의 실패 판정도 수정했어. 원격 CI 실행과 이메일 발송은 이번 검증에 포함하지 않았어.</li></ul><h3>남은 가격 정렬 불일치</h3><div class="table-wrap"><table><thead><tr><th>TC</th><th>재현</th><th>기대</th><th>실제</th></tr></thead><tbody><tr><td>SEARCH-002</td><td>젤 검색 후 높은가격순 선택</td><td>표시 판매가가 내림차순</td><td>83,000원 다음 106,600원</td></tr><tr><td>STORE-002</td><td>lifestyle에서 가격높은순 선택</td><td>표시 판매가가 내림차순</td><td>마이 힉셀 컨트롤러 377,000원 다음 잘로 키트 399,000원</td></tr></tbody></table></div><p>가격낮은순은 통과했고 가격높은순에서 실패했어. 스토어는 별도 브라우저에서도 같은 순서를 재현했어. 표시 판매가 기준 불일치는 확인된 사실이고, 서버가 정가 등 다른 필드를 기준으로 정렬하는지는 아직 미확인이야. 서비스 정렬 정책과 구현을 확인해야 하므로 테스트는 active 실패 상태로 유지했어.</p><p>이 저장소에는 서비스 소스나 데이터 준비 API가 없어. 위 2건의 서비스 동작 수정은 여기서 완료하지 못했어. 재현 순서는 검색 또는 카테고리 진입, 가격낮은순 선택, 가격높은순 선택, 인접 상품의 판매가 비교야. 정렬 기준을 확정한 후 서비스 코드 또는 합의된 기대 결과를 수정하고 같은 TC를 다시 실행해야 해.</p><h3>이번 구현의 경계</h3><p>이번에는 기존 CSV와 YAML 실행 구조를 유지하면서 실행 오류를 복구하고 기대 결과를 강화했어. 장바구니와 주문서의 공통 동작을 CommercePage로 분리했지만, 모든 TC를 독립 TypeScript spec과 전용 fixture로 이관한 것은 아니야. 11개 검증 묶음은 설계안이고 실행 TC는 23개를 유지해.</p><p>정상 검색으로 복구, 최소 수량 경계, 두 상품 중 하나만 삭제, 필수값 오류, 약관 내용 검증, 고정 데이터, PG sandbox, 할인과 배송비 정책 검증은 후속 범위야. 최종 결제 버튼은 누르지 않았고 주문도 생성하지 않았어. 10회 연속 통과나 모바일 브라우저 안정화도 아직 달성한 결과가 아니야.</p></section></article></div></main><footer><div class="wrap"><p>Taeik's Dev Log / 테스트 자동화 기록</p><p><a href="index.html">전체 글</a> / <a href="testcase-cicd.html">이전 글: 테스트케이스 CI/CD</a></p></div></footer><script>
+  function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}
+  function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeNav()});
+</script></body></html>
