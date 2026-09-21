@@ -124,27 +124,28 @@
   }
 
 .table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--border);border-radius:10px}table{border-collapse:collapse;width:100%;font-size:14px;min-width:550px}th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}th{background:var(--surface2);color:var(--accent2)}td code{overflow-wrap:anywhere}h2,h3{scroll-margin-top:24px}.toc{background:var(--surface);padding:20px 24px;border:1px solid var(--border);border-radius:12px}.toc ol{padding-left:20px}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.stat{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.stat b{display:block;font-size:27px;color:var(--accent2)}.stat span{font-size:13px;color:var(--muted)}@media(max-width:600px){.stat-grid{gap:6px}.stat{padding:10px}.stat b{font-size:23px}.table-wrap{max-width:100%}}
-.tc{border:1px solid var(--border);border-radius:12px;padding:4px 20px 18px;margin:20px 0;background:var(--surface)}.tc h3{margin-top:18px;overflow-wrap:anywhere}.tc-meta{font-size:13px;color:var(--muted)}dt{font-weight:700;color:var(--accent2);margin-top:12px}dd{margin:4px 0 0}section{scroll-margin-top:25px}</style></head><body><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+.tc{border:1px solid var(--border);border-radius:12px;padding:4px 20px 18px;margin:20px 0;background:var(--surface)}.tc h3{margin-top:18px;overflow-wrap:anywhere}.tc-meta{font-size:13px;color:var(--muted)}dt{font-weight:700;color:var(--accent2);margin-top:12px}dd{margin:4px 0 0}section{scroll-margin-top:25px}</style><link rel="stylesheet" href="lnb.css">
+</head><body><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
 <div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
 <nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
   <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
   <div class="brand">Taeik's Dev Log</div>
   <a class="home" href="index.html">🏠 홈</a>
 
-  <div class="folder">📁 테스트케이스 관리 (TC)</div>
+  <details class="nav-group" open><summary>📁 테스트케이스 관리 (TC)</summary>
   <ul>
     <li><a class="active" href="lomastore-testcases.html">로마스토어 E2E 테스트케이스 29개: 절차와 기대 결과<span class="date">2026-09-22</span></a></li>
     <li><a href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
     <li><a href="testcase-cicd.html">손으로 고치는 게 병목이다 — 테스트케이스 CI/CD 다시 짜기<span class="date">2026-07-30</span></a></li>
-  </ul>
+  </ul></details>
 
-  <div class="folder">📁 자동화 엔진</div>
+  <details class="nav-group"><summary>📁 자동화 엔진</summary>
   <ul>
     <li><a href="lomastore-e2e-redesign.html">23개 TC를 다시 검토한 로마스토어 E2E 재설계<span class="date">2026-09-08</span></a></li>
     
     <li><a href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
     <li><a href="self-healing-locator.html">셀렉터가 낡아도 안 깨지게 — 셀프힐링 토대 만들기<span class="date">2026-07-27</span></a></li>
-  </ul>
+  </ul></details>
 </nav><header class="hero"><div class="wrap"><span class="kicker">TEST CASES / PLAYWRIGHT</span><h1>로마스토어 E2E 테스트케이스 29개: 절차와 기대 결과</h1><p class="lede">무엇을 누르고, 무엇이 맞아야 통과일까. 실행 가능한 29개 케이스를 독자가 읽을 수 있는 검증 명세로 정리했어.</p><div class="meta"><span>Taeik</span><span>2026-09-22</span><span>코드 7fcdc45 기준</span></div></div></header><main><div class="wrap"><article><div class="stat-grid"><div class="stat"><b>29</b><span>전체 테스트케이스</span></div><div class="stat"><b>11</b><span>예약 smoke</span></div><div class="stat"><b>18</b><span>수동 regression</span></div></div>
 <p>테스트케이스는 행동과 성공 판정을 함께 적어야 해. 로마스토어의 비회원 탐색부터 장바구니, 주문서 진입까지 현재 자동화가 검사하는 29개를 실행 코드에 맞춰 정리했어. 이 글은 2026년 9월 21일 main에 반영한 코드의 명세 스냅샷이야.</p>
 <div class="callout"><strong>작성 기준</strong><p>게시일은 2026-09-22, 구현 기준은 <code>7fcdc45</code>야. 아래 결과는 9월 21일 실행 기록이며 오늘 새로 실행한 결과가 아니야. 전체 케이스는 active, enabled=true이고 P1은 smoke 11개, P2는 regression 18개야.</p></div>
