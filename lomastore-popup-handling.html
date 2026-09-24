@@ -1,0 +1,185 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>갑자기 실패한 홈 테스트 5개, 이벤트 팝업을 안전하게 닫기 | Taeik's Dev Log</title><meta name="description" content="이벤트 팝업으로 함께 실패한 홈 테스트 5개를 분석하고, 안전한 팝업 처리와 CI smoke 11개 통과까지 검증한 기록."><link rel="canonical" href="https://tikim1988.github.io/lomastore-popup-handling.html"><style>
+  :root{
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#26303d; --text:#e6edf3; --muted:#9aa7b4;
+    --accent:#58a6ff; --accent2:#7ee787; --warn:#e3b341; --danger:#ff7b72;
+    --code:#0b1017;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",Roboto,"Apple SD Gothic Neo",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);line-height:1.75;font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  header.hero{
+    border-bottom:1px solid var(--border);
+    background:radial-gradient(1200px 400px at 20% -10%,rgba(88,166,255,.14),transparent 60%),var(--bg);
+    padding:72px 0 44px;
+  }
+  .kicker{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+    color:var(--accent2);background:rgba(126,231,135,.08);
+    border:1px solid rgba(126,231,135,.25);border-radius:999px;padding:5px 12px;margin-bottom:20px;
+  }
+  h1{font-size:34px;line-height:1.28;margin:0 0 16px;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:18px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:26px;color:var(--muted);font-size:14px;font-family:var(--mono)}
+  .meta b{color:var(--text);font-weight:600}
+  main{padding:8px 0 60px}
+  article h2{font-size:24px;margin:52px 0 14px;letter-spacing:-.01em}
+  article h2 .n{font-family:var(--mono);color:var(--accent);font-size:16px;margin-right:10px}
+  article h3{font-size:18px;margin:30px 0 8px;color:var(--text)}
+  p{margin:14px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  strong{color:#fff}
+  .tldr{
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);
+    border-radius:10px;padding:18px 20px;margin:28px 0;
+  }
+  .tldr b{color:var(--accent2)}
+  ul.clean{padding-left:20px;margin:14px 0}
+  ul.clean li{margin:8px 0}
+  pre{
+    background:var(--code);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.6;
+    margin:18px 0;
+  }
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface2);border:1px solid var(--border);
+    padding:1.5px 6px;border-radius:5px;color:#d7e2ee}
+  pre code{background:none;border:none;padding:0;color:#c9d5e1}
+  .tok-c{color:#6b7683}      /* comment */
+  .tok-k{color:var(--danger)} /* keyword */
+  .tok-s{color:var(--accent2)} /* string */
+  .tok-a{color:var(--accent)}  /* attr/key */
+  .diagram{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:24px;margin:26px 0;font-family:var(--mono);font-size:13px;color:var(--muted);
+    line-height:1.5;overflow-x:auto;
+  }
+  .stack{display:grid;gap:10px}
+  .layer{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface2)}
+  .layer .t{color:var(--text);font-family:var(--sans);font-weight:600;font-size:14px}
+  .layer .d{font-size:12.5px;margin-top:3px}
+  .layer.own{border-color:rgba(88,166,255,.5)}
+  .layer.ext{border-style:dashed;opacity:.85}
+  .callout{
+    border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:22px 0;background:var(--surface);
+  }
+  .callout.warn{border-left:3px solid var(--warn)}
+  .callout.warn .h{color:var(--warn)}
+  .callout .h{font-weight:700;display:block;margin-bottom:6px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+  .steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px dashed var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:0;top:9px;
+    width:28px;height:28px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent);font-family:var(--mono);font-size:13px;display:grid;place-items:center;
+  }
+  hr{border:none;border-top:1px solid var(--border);margin:44px 0}
+  .quote{border-left:3px solid var(--accent);padding:4px 0 4px 18px;color:var(--muted);font-style:italic;margin:22px 0}
+  footer{border-top:1px solid var(--border);padding:34px 0 60px;color:var(--muted);font-size:14px}
+  footer a{color:var(--accent)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--border);
+    border-radius:999px;padding:3px 10px;background:var(--surface)}
+  @media(max-width:600px){h1{font-size:27px}body{font-size:16px}article h2{font-size:21px}}
+
+  /* --- 고정 LNB 사이드바 --- */
+  body{padding-left:260px}
+  .nav-toggle,.lnb-overlay,.lnb .close{display:none}
+  .lnb{position:fixed;top:0;left:0;height:100vh;width:260px;background:var(--surface);
+    border-right:1px solid var(--border);z-index:40;padding:28px 18px 40px;overflow-y:auto}
+  .lnb .brand{font-family:var(--mono);font-size:12.5px;color:var(--accent2);letter-spacing:.05em;margin-bottom:8px}
+  .lnb .home{display:block;color:var(--text);font-weight:600;margin-bottom:8px;font-size:17px}
+  .lnb .home:hover{text-decoration:none;color:var(--accent)}
+  .lnb .home.active{color:var(--accent)}
+  .lnb .folder{margin:22px 0 6px;font-size:12.5px;color:var(--muted);font-family:var(--mono);
+    display:flex;align-items:center;gap:7px}
+  .lnb ul{list-style:none;padding:0;margin:0}
+  .lnb li a{display:block;padding:9px 11px;border-radius:8px;color:var(--text);font-size:14px;line-height:1.45}
+  .lnb li a:hover{background:var(--surface2);text-decoration:none}
+  .lnb li a.active{background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.35);color:var(--accent)}
+  .lnb li .date{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  /* 모바일: 사이드바 접고 햄버거로 전환 */
+  @media(max-width:860px){
+    body{padding-left:0}
+    .nav-toggle{display:grid;position:fixed;top:14px;left:14px;z-index:50;width:44px;height:44px;border-radius:10px;
+      background:rgba(22,27,34,.9);backdrop-filter:blur(6px);border:1px solid var(--border);color:var(--text);
+      cursor:pointer;place-items:center;font-size:18px;line-height:1}
+    .nav-toggle:hover{border-color:var(--accent);color:var(--accent)}
+    .lnb{transform:translateX(-100%);transition:transform .25s ease;z-index:70;width:280px;max-width:82vw}
+    .lnb.open{transform:none}
+    .lnb .close{display:block;position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);
+      font-size:22px;cursor:pointer;line-height:1}
+    .lnb .close:hover{color:var(--text)}
+    .lnb-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;visibility:hidden;
+      transition:opacity .2s;z-index:60}
+    .lnb-overlay.open{opacity:1;visibility:visible}
+  }
+
+.table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--border);border-radius:10px}table{border-collapse:collapse;width:100%;font-size:14px;min-width:550px}th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}th{background:var(--surface2);color:var(--accent2)}td code{overflow-wrap:anywhere}h2,h3{scroll-margin-top:24px}.toc{background:var(--surface);padding:20px 24px;border:1px solid var(--border);border-radius:12px}.toc ol{padding-left:20px}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.stat{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.stat b{display:block;font-size:27px;color:var(--accent2)}.stat span{font-size:13px;color:var(--muted)}@media(max-width:600px){.stat-grid{gap:6px}.stat{padding:10px}.stat b{font-size:23px}.table-wrap{max-width:100%}}
+.tc{border:1px solid var(--border);border-radius:12px;padding:4px 20px 18px;margin:20px 0;background:var(--surface)}.tc h3{margin-top:18px;overflow-wrap:anywhere}.tc-meta{font-size:13px;color:var(--muted)}dt{font-weight:700;color:var(--accent2);margin-top:12px}dd{margin:4px 0 0}section{scroll-margin-top:25px}</style><link rel="stylesheet" href="lnb.css">
+</head><body><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+<div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
+<nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
+  <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
+  <div class="brand">Taeik's Dev Log</div>
+  <a class="home" href="index.html">🏠 홈</a>
+
+  <details class="nav-group" open><summary>📁 테스트케이스 관리 (TC)</summary>
+  <ul>
+    <li><a href="lomastore-testcases.html">로마스토어 E2E 테스트케이스 29개: 절차와 기대 결과<span class="date">2026-09-22</span></a></li>
+    <li><a href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
+    <li><a href="testcase-cicd.html">손으로 고치는 게 병목이다 — 테스트케이스 CI/CD 다시 짜기<span class="date">2026-07-30</span></a></li>
+  </ul></details>
+
+  <details class="nav-group"><summary>📁 자동화 엔진</summary>
+  <ul>
+    <li><a class="active" href="lomastore-popup-handling.html">갑자기 실패한 홈 테스트 5개, 이벤트 팝업을 안전하게 닫기<span class="date">2026-09-24</span></a></li>
+    <li><a href="lomastore-e2e-redesign.html">23개 TC를 다시 검토한 로마스토어 E2E 재설계<span class="date">2026-09-08</span></a></li>
+    
+    <li><a href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
+    <li><a href="self-healing-locator.html">셀렉터가 낡아도 안 깨지게 — 셀프힐링 토대 만들기<span class="date">2026-07-27</span></a></li>
+  </ul></details>
+</nav><header class="hero"><div class="wrap"><span class="kicker">E2E / POPUP HANDLING</span><h1>갑자기 실패한 홈 테스트 5개, 이벤트 팝업을 안전하게 닫기</h1><p class="lede">불규칙한 이벤트 팝업을 처리하면서 검증 대상인 확인창은 보존한 기록. 원인 재현부터 CI 검증과 남은 문제까지 정리했어.</p><div class="meta"><span>Taeik</span><span>2026-09-24 기록</span><span>구현 d30c41a</span></div></div></header><main><div class="wrap"><article><div class="stat-grid"><div class="stat"><b>5 / 11</b><span>수정 전 실패</span></div><div class="stat"><b>11 / 11</b><span>수정 후 CI 통과</span></div><div class="stat"><b>0</b><span>수정 후 CI 재시도 통과</span></div></div>
+<p>같은 코드로 어제는 통과했던 테스트가 오늘은 절반 가까이 실패했어. 배너, 약관, 인기상품, 검색이 함께 실패했지만, 먼저 봐야 할 것은 각 기능의 셀렉터보다 공통 진입점이었어. 홈에 나타난 이벤트 팝업이 배경 조작을 막고 있었어.</p>
+<div class="callout"><strong>기록의 기준</strong><p>이 글은 2026-09-24의 분석과 수정 커밋 <code>d30c41a</code>를 기록해. CI 실패 당시 trace를 직접 열어 확인한 것은 아니야. 실패 로그의 공통 패턴과 현재 브라우저 재현, 수정 후 CI 결과를 연결해 판단했어. 로컬에서 남은 별도 실패도 구분했어.</p></div>
+<nav class="toc" aria-label="글 목차"><ol><li><a href="#symptom">다섯 실패의 공통점</a></li><li><a href="#cause">보이는데 찾을 수 없는 이유</a></li><li><a href="#implementation">안전한 팝업 처리</a></li><li><a href="#verification">검증과 남은 문제</a></li><li><a href="#lesson">이번에 남긴 기준</a></li></ol></nav>
+<h2 id="symptom">1. 다섯 실패의 공통점</h2><p>9월 23일은 11개 모두 통과했지만, 24일에는 동일한 <code>7fcdc45</code>로 6개 통과, 5개 실패였어. 실패한 케이스는 재시도에서도 실패했어.</p>
+<div class="table-wrap"><table><thead><tr><th>TC</th><th>찾지 못한 요소</th></tr></thead><tbody><tr><td>HOME-003</td><td>배너의 첫 슬라이드 버튼</td></tr><tr><td>HOME-007</td><td>풋터 이용약관 링크</td></tr><tr><td>HOME-001</td><td>헤더 스토어 링크</td></tr><tr><td>HOME-005</td><td>헬스케어 인기상품 카드</td></tr><tr><td>SEARCH-001</td><td>헤더 검색 버튼</td></tr></tbody></table></div>
+<p>모두 홈에서 시작했고, 상품 상세, 장바구니, 주문서, 스토어에서 시작한 케이스는 통과했어. 이전 HOME-007의 간헐적 실패는 클릭 후 이동하지 않는 증상이었지만, 이번에는 클릭할 링크를 찾는 단계에서 멈췄어. 같은 TC라도 실패 단계가 다르면 원인을 다시 분류해야 해.</p>
+<h2 id="cause">2. 보이는데 찾을 수 없는 이유</h2><p>브라우저에서 홈을 열자 추석 이벤트 팝업이 나타났어. 배경 영역에는 <code>inert</code>가 적용돼 있었어. 팝업 뒤에 HTML과 화면이 남아 있어도 조작 대상에서 제외될 수 있고, 역할 기반 로케이터는 해당 요소를 찾지 못할 수 있어.</p><p>팝업이 열린 동안 배너 버튼과 약관 링크는 0개로 탐색됐어. 닫기 버튼을 누르고 닫힘 처리가 끝나자, 실패했던 다섯 로케이터가 각각 1개씩 요소를 찾았어. 기다리는 시간만 늘려서는 사용자가 닫아야 하는 팝업이 사라지지 않아.</p>
+<h2 id="implementation">3. 안전한 팝업 처리</h2><p>모든 닫기 버튼을 누르면 주문 확인창이나 로그인 안내까지 사라질 수 있어. 자동 처리 대상을 <strong>이벤트 팝업 링크와 오늘 더 보지 않기 버튼을 함께 포함한 dialog</strong>로 제한했어. 해당 영역 안의 닫기 버튼으로만 닫아.</p>
+<p>각 테스트 시작 시 Playwright의 <code>addLocatorHandler</code>를 등록해. 조작 가능 여부를 검사하는 동작이나 자동 대기 assertion 전에 팝업이 감지되면 닫고 원래 동작을 이어가. 진입 직후 한 번만 검사하는 방식과 달리 늦게 나타나거나 다시 뜨는 팝업도 처리할 수 있어.</p>
+<p><code>getAttribute</code>처럼 속성을 읽기만 하는 동작에는 이 감지가 실행되지 않으므로, 배너와 인기상품 링크의 주소를 읽기 전에 <code>toBeVisible</code> 검증을 추가했어. 업무 동작 전체를 재실행하지 않아서 장바구니 담기 같은 동작을 중복 수행하지 않아.</p>
+<h3>컨테이너 대신 실제 닫기 버튼을 감지</h3><p>첫 구현에서는 dialog 자체를 감지했지만 실사이트에서 동작하지 않았어. 팝업 컨테이너의 크기가 0으로 잡히는 구조였어. 그래서 실제로 보이는 닫기 버튼을 감지 대상으로 바꾸고, 이 구조도 브라우저 검증에 포함했어.</p><pre><code>import { expect, test, type Page } from &#x27;@playwright/test&#x27;;
+
+// 이벤트 팝업만 식별해. 주문 확인, 로그인 안내 등 업무용 dialog는 건드리지 않아.
+export async function installOverlayHandler(page: Page) {
+  const popup = page.getByRole(&#x27;dialog&#x27;).filter({
+    has: page.getByRole(&#x27;link&#x27;, { name: /^이벤트 팝업:/ }),
+  }).filter({ has: page.getByRole(&#x27;button&#x27;, { name: &#x27;오늘 더 보지 않기&#x27;, exact: true }) });
+  // dialog 컨테이너가 크기 0인 사이트 구조도 있어 실제 닫기 버튼을 감지해.
+  const close = popup.getByRole(&#x27;button&#x27;, { name: &#x27;닫기&#x27;, exact: true });
+  let dismissed = 0;
+  await page.addLocatorHandler(close, async () =&gt; {
+    await test.step(`이벤트 팝업 닫기 (${++dismissed}/3)`, async () =&gt; {
+      await close.click();
+      await expect(close).toBeHidden();
+      // 닫힘 애니메이션 뒤 배경의 inert가 해제될 때까지 기다려.
+      await expect(page.locator(&#x27;header&#x27;).locator(&#x27;xpath=ancestor-or-self::*[@inert]&#x27;)).toHaveCount(0);
+    });
+  }, { times: 3 });
+}
+</code></pre><p>닫기 버튼이 사라지고 헤더와 상위 영역의 inert가 해제될 때까지 기다려. 처리 횟수는 테스트당 최대 3회이고, 각 처리는 test.step으로 리포트에 남겨. 네 번째 팝업부터는 더 닫지 않으므로 원래 동작이 진행되지 않으면 제한 시간 초과로 실패해.</p><p>알 수 없는 팝업과 업무용 확인창은 자동으로 닫지 않아. 감지 조건이 다른 새 팝업은 별도 식별 규칙과 검증을 추가해야 해.</p>
+<h2 id="verification">4. 검증과 남은 문제</h2><div class="table-wrap"><table><thead><tr><th>검증</th><th>결과</th><th>확인 범위</th></tr></thead><tbody><tr><td>팝업 브라우저 검증</td><td>4개 통과</td><td>미노출, 지연 및 반복 노출, 업무용 확인창 보존, 처리 한도 초과</td></tr><tr><td>정적 검사와 단위 테스트</td><td>통과, 단위 테스트 20개</td><td>타입과 CSV 동기화 포함</td></tr><tr><td>로컬 smoke</td><td>10 통과, 1 실패</td><td>HOME-005 상품 상세 버튼 미노출</td></tr><tr><td>로컬 홈 회귀</td><td>4개 통과</td><td>HOME-002, 004, 006, 008</td></tr><tr><td>HOME-005 별도 3회</td><td>2 통과, 1 실패</td><td>상품 상세의 간헐적 미노출 재현</td></tr><tr><td>수정 후 GitHub smoke</td><td>11개 모두 통과</td><td>실패 0, flaky 0, skip 0, 실행 오류 0</td></tr></tbody></table></div>
+<p>CI에는 팝업 브라우저 검증 4개를 먼저 실행하고 실사이트 smoke를 이어서 실행하는 단계를 추가했어. 이번 push 실행의 성공을 확인했으며, 이후 예약 실행의 장기 안정성까지 확인한 것은 아니야.</p>
+<div class="callout warn"><strong>팝업 해결과 전체 안정화는 구분했어</strong><p>HOME-005는 팝업을 닫고 상품 상세까지 이동한 뒤 장바구니 담기 버튼을 5초 안에 찾지 못하는 문제가 로컬에서 남았어. CI 통과만으로 이 문제까지 해결됐다고 결론 내리지 않았어. 가격 정렬 회귀 2개도 이번 smoke 범위에 없으므로 해결 여부를 갱신하지 않았어.</p></div>
+<h2 id="lesson">5. 이번에 남긴 기준</h2><ul class="clean"><li>여러 TC가 동시에 실패하면 공통 진입점과 실패 단계를 먼저 비교해.</li><li>팝업은 진입 시점뿐 아니라 동작 직전에도 나타날 수 있어.</li><li>자동 복구는 식별 범위와 횟수를 제한하고 처리 기록을 남겨.</li><li>복구 이후 원래 기대 결과 검증은 유지해. 팝업을 닫은 것과 업무 기능이 정상인 것은 별개야.</li></ul>
+<h3>실행 근거</h3><ul class="clean"><li><a href="https://github.com/TIKim1988/test-automation-skeleton/actions/runs/35955242577">수정 전 예약 실행: 6 통과, 5 실패</a></li><li><a href="https://github.com/TIKim1988/test-automation-skeleton/actions/runs/35956495987">수정 후 CI: smoke 11개 통과</a></li><li><a href="https://github.com/TIKim1988/test-automation-skeleton/blob/d30c41a659d9bccda17c51e966554620039fef44/automation/pages/overlays.ts">팝업 처리 구현</a></li><li><a href="https://github.com/TIKim1988/test-automation-skeleton/blob/d30c41a659d9bccda17c51e966554620039fef44/docs/lomastore-popup-validation-2026-09-24.json">로컬 검증 기록</a></li></ul><p>저장소 링크는 접근 권한이 필요할 수 있어.</p><p><a href="lomastore-testcases.html">관련 글: 로마스토어 테스트케이스 29개</a></p></article></div></main><footer><div class="wrap"><a href="index.html">Taeik's Dev Log 홈으로</a><p>기록 기준 2026-09-24</p></div></footer><script>function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}</script></body></html>
