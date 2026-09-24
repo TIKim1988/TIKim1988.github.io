@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="test-automation-skeleton — 사람이 읽는 테스트 시나리오가 그대로 자동화 스펙이 되는 구조를 만들고 고도화한 기록. SSH 삽질부터 무결성 검사까지.">
-<title>사람이 읽고 기계가 실행하는 테스트 케이스 만들기 · Taeik's Dev Log</title>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>테스트 명세를 자동화 실행에 연결하는 방법 | Taeik's Dev Log</title>
+<meta name="description" content="시나리오, 화면 식별 규칙, 테스트 데이터를 나누고 명세와 실행의 연결을 관리한 기록.">
+<link rel="canonical" href="https://tikim1988.github.io/testcase-management.html">
 <style>
   :root{
     --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
@@ -129,175 +127,70 @@
       transition:opacity .2s;z-index:60}
     .lnb-overlay.open{opacity:1;visibility:visible}
   }
-</style>
-<link rel="stylesheet" href="lnb.css">
-</head>
-<body>
 
-<button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+.table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--border);border-radius:10px}table{border-collapse:collapse;width:100%;font-size:14px;min-width:550px}th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}th{background:var(--surface2);color:var(--accent2)}td code{overflow-wrap:anywhere}h2,h3{scroll-margin-top:24px}.toc{background:var(--surface);padding:20px 24px;border:1px solid var(--border);border-radius:12px}.toc ol{padding-left:20px}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.stat{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.stat b{display:block;font-size:27px;color:var(--accent2)}.stat span{font-size:13px;color:var(--muted)}@media(max-width:600px){.stat-grid{gap:6px}.stat{padding:10px}.stat b{font-size:23px}.table-wrap{max-width:100%}}
+.tc{border:1px solid var(--border);border-radius:12px;padding:4px 20px 18px;margin:20px 0;background:var(--surface)}.tc h3{margin-top:18px;overflow-wrap:anywhere}.tc-meta{font-size:13px;color:var(--muted)}dt{font-weight:700;color:var(--accent2);margin-top:12px}dd{margin:4px 0 0}section{scroll-margin-top:25px}</style><link rel="stylesheet" href="lnb.css"><link rel="stylesheet" href="editorial.css">
+</head><body><a class="skip-link" href="#content">본문으로 이동</a><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
 <div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
-<nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
-  <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
-  <div class="brand">Taeik's Dev Log</div>
-  <a class="home" href="index.html">🏠 홈</a>
-
-  <details class="nav-group" open><summary>📁 테스트케이스 관리 (TC)</summary>
-  <ul>
-    <li><a href="lomastore-testcases.html">로마스토어 E2E 테스트케이스 29개: 절차와 기대 결과<span class="date">2026-09-22</span></a></li>
-    <li><a class="active" href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
-    <li><a href="testcase-cicd.html">손으로 고치는 게 병목이다 — 테스트케이스 CI/CD 다시 짜기<span class="date">2026-07-30</span></a></li>
-  </ul></details>
-
-  <details class="nav-group"><summary>📁 자동화 엔진</summary>
-  <ul>
-    <li><a href="lomastore-popup-handling.html">갑자기 실패한 홈 테스트 5개, 이벤트 팝업을 안전하게 닫기<span class="date">2026-09-24</span></a></li>
-    <li><a href="lomastore-e2e-redesign.html">23개 TC를 다시 검토한 로마스토어 E2E 재설계<span class="date">2026-09-08</span></a></li>
-    <li><a href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
-    <li><a href="self-healing-locator.html">셀렉터가 낡아도 안 깨지게 — 셀프힐링 토대 만들기<span class="date">2026-07-27</span></a></li>
-  </ul></details>
+<nav class="lnb" id="lnb" aria-label="사이트 내비게이션"><button class="close" aria-label="메뉴 닫기" onclick="closeNav()">×</button><div class="brand">Taeik's Dev Log</div><a class="home" href="index.html">홈</a>
+<details class="nav-group" open><summary>테스트케이스 관리 (TC)</summary><ul>
+<li><a href="lomastore-testcases.html">로마스토어 테스트케이스 29개: 범위와 기대 결과<span class="date">2026-09-22</span></a></li>
+<li><a class="active" aria-current="page" href="testcase-management.html">테스트 명세를 자동화 실행에 연결하는 방법<span class="date">2026-07-13</span></a></li>
+<li><a href="testcase-cicd.html">테스트케이스 변경을 검증하는 CI 운영 구조<span class="date">2026-07-30</span></a></li>
+</ul></details>
+<details class="nav-group"><summary>자동화 엔진</summary><ul>
+<li><a href="lomastore-popup-handling.html">이벤트 팝업으로 막힌 테스트: 원인 분석과 대응<span class="date">2026-09-24</span></a></li>
+<li><a href="lomastore-e2e-redesign.html">로마스토어 E2E 재설계: 노출 확인에서 결과 검증으로<span class="date">2026-09-08</span></a></li>
+<li><a href="test-automation-engine.html">YAML 시나리오를 실행하는 Playwright 엔진 설계<span class="date">2026-07-13</span></a></li>
+<li><a href="self-healing-locator.html">셀렉터 변경에 대비하는 감지와 기록 구조<span class="date">2026-07-27</span></a></li>
+</ul></details>
 </nav>
-
-<header class="hero">
-  <div class="wrap">
-    <span class="kicker">DEV LOG · 테스트 자동화</span>
-    <h1>사람이 읽는 문서가 그대로 기계의 실행 스펙이 되게 만들기</h1>
-    <p class="lede">테스트 케이스를 "문서 따로, 코드 따로"에서 벗어나 하나로 합친 이야기. 구조를 어떻게 잡았고, SSH 삽질부터 무결성 검사까지 어디서 넘어졌는지 기록.</p>
-    <div class="meta">
-      <span>✍️ <b>Taeik</b></span>
-      <span>📅 2026-07-13</span>
-      <span>📦 <b>test-automation-skeleton</b></span>
-      <span>⏱️ 약 6분</span>
-    </div>
-  </div>
-</header>
-
-<main>
-  <div class="wrap">
-    <article>
-
-      <div class="tldr">
-        <b>요약 먼저.</b> 테스트 케이스를 사람이 읽는 YAML 시나리오로 쓰되, 그 파일을 자동화 프로젝트가 <em>그대로 실행 스펙으로 읽게</em> 만들었다. 화면 요소(셀렉터)·데이터(픽스처)·시나리오를 3계층으로 분리하고, 커밋 전에 <code>validate_testcases.py</code>로 정합성을 강제한다. 지금은 홈 화면 커버리지를 배너·상품·푸터까지 넓히는 중. 가장 크게 넘어진 곳은 코드가 아니라 <strong>SSH 인증 삽질</strong>이었다.
-      </div>
-
-      <h2><span class="n">01</span>왜 이걸 만들었나</h2>
-      <p>테스트 케이스는 보통 두 곳에 따로 산다. 하나는 사람이 읽는 문서(스프레드시트, 위키), 하나는 자동화 코드(Playwright 스크립트). 문제는 이 둘이 <strong>항상 어긋난다</strong>는 거다. 화면이 바뀌면 코드는 고쳐도 문서는 방치되고, 문서를 고쳐도 코드에 반영이 안 된다. 결국 "테스트 문서"는 아무도 안 믿는 종이가 된다.</p>
-      <p>그래서 전제를 뒤집었다. <strong>문서를 실행 가능한 스펙으로 만들면, 어긋날 수가 없다.</strong> 사람이 읽는 시나리오 파일 하나가 곧 자동화가 실행하는 입력이 되도록. 이게 <code>test-automation-skeleton</code> 저장소의 출발점이다.</p>
-
-      <div class="quote">문서와 코드를 동기화하려 애쓰지 말고, 애초에 하나로 두자.</div>
-
-      <h2><span class="n">02</span>구조 — 3계층으로 쪼갠 이유</h2>
-      <p>핵심 결정은 "무엇이 바뀌면 어디만 고치면 되는가"를 기준으로 파일을 나눈 것이다. 화면 요소, 테스트 데이터, 시나리오는 <strong>바뀌는 빈도와 이유가 다르다.</strong> 그래서 계층을 분리했다.</p>
-
-      <div class="diagram">
-        <div class="stack">
-          <div class="layer own"><div class="t">testcases/**/*.yaml</div><div class="d">사람이 읽는 테스트 시나리오. 동시에 자동화가 그대로 실행하는 스펙. (내 소유)</div></div>
-          <div class="layer own"><div class="t">selectors/*.yaml</div><div class="d">화면 요소 이름 → 실제 role / testId / css 매핑. (내 소유)</div></div>
-          <div class="layer own"><div class="t">fixtures/*.yaml</div><div class="d">테스트에 쓰는 실제 데이터 (계정 등). (내 소유)</div></div>
-          <div class="layer ext"><div class="t">automation/ — 다른 프로젝트 소유, 여기선 안 건드림</div><div class="d">위 3계층을 읽어서 실제로 브라우저를 굴리는 Playwright 쪽.</div></div>
-        </div>
-      </div>
-
-      <p>포인트는 <strong>시나리오에 CSS나 role을 직접 쓰지 않는다</strong>는 규칙이다. 테스트 케이스는 <code>login_button</code> 같은 <em>이름</em>으로만 요소를 참조하고, 그 이름이 실제로 무엇인지는 <code>selectors</code>가 안다. 그래서 버튼의 클래스명이 바뀌어도 고칠 곳은 셀렉터 파일 한 줄뿐이다. 시나리오 수십 개는 그대로 산다.</p>
-
-      <h3>테스트 케이스는 이렇게 생겼다</h3>
-
-<pre><code><span class="tok-a">id</span>: LOGIN-001
-<span class="tok-a">title</span>: 로그인 성공
-<span class="tok-a">last_verified</span>: 2026-07-13
-<span class="tok-a">steps</span>:
-  - <span class="tok-a">action</span>: navigate
-    <span class="tok-a">target</span>: login_page
-  - <span class="tok-a">action</span>: fill
-    <span class="tok-a">target</span>: email_input
-    <span class="tok-a">value</span>: <span class="tok-s">"{{ fixtures.user.email }}"</span>
-  - <span class="tok-a">action</span>: click
-    <span class="tok-a">target</span>: login_button
-  - <span class="tok-a">action</span>: assert_visible
-    <span class="tok-a">target</span>: dashboard_header</code></pre>
-
-      <p><code>action</code>은 정해진 어휘만 쓴다 — <code>navigate, click, fill, select, check, uncheck, assert_visible, assert_hidden, assert_text, wait, custom</code>. 파일 업로드나 멀티탭처럼 복잡한 동작은 <code>action: custom</code> + 이름표를 달아 자동화 쪽에 "이 이름으로 이런 동작 구현해달라"고 넘긴다. 구현은 그쪽 몫, 스펙 정의는 내 몫으로 경계를 그었다.</p>
-
-      <h2><span class="n">03</span>가장 중요한 장치 — 커밋을 막는 검증기</h2>
-      <p>구조를 아무리 예쁘게 잡아도, <strong>사람이 손으로 쓰는 YAML은 반드시 깨진다.</strong> 셀렉터에 없는 요소를 참조하거나, 필수 필드를 빼먹거나, 오타 난 <code>action</code>을 쓴다. 그래서 <code>validate_testcases.py</code>가 커밋 전에 이걸 전부 잡는다.</p>
-      <ul class="clean">
-        <li><strong>정합성</strong> — 시나리오가 참조하는 모든 <code>target</code>이 <code>selectors</code>에 실제로 존재하는지 대조.</li>
-        <li><strong>필수 필드</strong> — <code>id / title / steps</code>가 다 있는지.</li>
-        <li><strong>어휘 검사</strong> — 정해진 <code>action</code> 목록 밖의 값이 있으면 오류.</li>
-        <li><strong>신선도(stale) 경고</strong> — <code>last_verified</code>가 30일 넘게 지난 케이스를 따로 알려준다.</li>
-      </ul>
-      <p>이 stale 목록이 사실상 "할 일 우선순위"다 — 30일 넘은 케이스 = 실제 화면을 다시 눈으로 확인해야 하는 대상. 검증기가 매번 이 목록을 뱉으니, 다음에 뭘 점검할지 고민할 필요가 없다. 오류가 하나라도 있으면 <code>exit 1</code> — 깨진 채로는 커밋이 안 넘어간다.</p>
-
-      <p>루틴 자체를 못박아 뒀다:</p>
-      <ol class="steps">
-        <li>실제 앱 화면을 Claude in Chrome / computer-use로 스크린샷·DOM 확인</li>
-        <li>기존 셀렉터·시나리오와 달라진 점 찾기</li>
-        <li>요소만 바뀌었으면 → <code>selectors</code> 해당 줄만 수정</li>
-        <li>플로우가 바뀌었으면 → 해당 케이스의 <code>steps</code> 수정</li>
-        <li><code>last_verified</code>를 오늘 날짜로 갱신</li>
-        <li><code>python3 validate_testcases.py</code> 통과 확인 후에만 commit &amp; push</li>
-      </ol>
-
-      <h2><span class="n">04</span>시행착오 — 코드가 아니라 인증에서 넘어졌다</h2>
-      <p>구조나 검증 로직은 오히려 순탄했다. 진짜 시간을 잡아먹은 건 <strong>저장소에 접속하는 것</strong>, 즉 GitHub SSH 인증이었다.</p>
-
-      <h3>삽질 1 — 도구가 아예 없었다</h3>
-      <p>샌드박스에서 SSH를 쓰려는데 <code>openssh-client</code>가 안 깔려 있었다. <code>apt-get install</code>로 해결. 사소하지만 "환경이 당연히 갖춰져 있겠지"라는 가정이 처음부터 틀렸다는 신호였다.</p>
-
-      <h3>삽질 2 — 있는 키를 두고 새 키를 만들 뻔했다</h3>
-      <p>여기가 진짜 교훈. 인증이 막히자 셋업 스크립트가 <strong>냉큼 새 SSH 키를 생성</strong>하고 "이 공개키를 GitHub에 등록하세요"로 넘어갔다. 그런데 사실 SSH 접근은 <em>이미 설정돼 있었다.</em> 등록된 지문은:</p>
-
-<pre><code><span class="tok-c"># 이미 GitHub에 등록돼 있던 키</span>
-SHA256:W9V18Bdai6IUIfgOdNSKTVQmUtMipN/DBtuHINJDCwQ</code></pre>
-
-      <p>새 키를 만드는 건 문제를 푸는 게 아니라 <strong>새 문제를 하나 더 만드는 것</strong>이었다. 등록 페이지를 열고, 키를 붙여넣고, 확인하고… 이미 되던 걸 처음부터 다시 하는 셈.</p>
-      <p>여기서 원칙 하나를 박제했다 — "만들기 전에 확인한다". 인증이 막히면 <strong>가장 먼저 기존 키의 지문이 GitHub에 등록된 것과 일치하는지부터 대조</strong>한다. 새 키 생성은 최후의 수단. 이 원칙 덕에 다음부터는 "일단 키부터 만들자"는 반사행동을 멈추게 됐다.</p>
-
-      <h3>삽질 3 — 프록시 위에 얹기</h3>
-      <p>샌드박스가 이미 <code>GIT_SSH_COMMAND</code> 프록시를 깔아둔 경우가 있어서, 덮어쓰지 않고 그 위에 identity만 얹도록 셋업 스크립트를 고쳤다:</p>
-
-<pre><code>export GIT_SSH_COMMAND=<span class="tok-s">"${GIT_SSH_COMMAND:-ssh} -i $IDENTITY -o IdentitiesOnly=yes -o StrictHostKeyChecking=no"</span></code></pre>
-
-      <p>기존 환경을 존중하면서 필요한 것만 추가하는 방식. 환경을 통째로 내 방식대로 갈아엎으려다 깨진 경험의 반작용이다.</p>
-
-      <h2><span class="n">05</span>지금 고도화하는 방향</h2>
-      <p>초기엔 홈 화면의 <strong>헤더 + 카테고리</strong> 섹션만 커버했다. 지금은 커버리지를 넓히는 중이다:</p>
-      <ul class="clean">
-        <li><strong>배너 섹션</strong> — 캐러셀·프로모션 배너의 노출/전환 확인</li>
-        <li><strong>상품 섹션</strong> — 상품 카드 렌더링, 목록 정합성</li>
-        <li><strong>푸터 섹션</strong> — 링크·정보 영역 검증</li>
-      </ul>
-      <p>넓힐수록 앞서 만든 3계층 분리와 검증기가 빛을 본다. 새 섹션을 추가한다는 건 대부분 <code>selectors</code>에 요소 몇 개 등록하고 시나리오를 얹는 일이라, 화면이 흔들려도 유지보수 비용이 선형으로만 늘어난다.</p>
-
-      <div class="tldr">
-        <b>배운 것 세 줄.</b> ① 문서와 코드를 동기화하려 하지 말고 하나로 둬라. ② 사람이 쓰는 파일은 반드시 깨지니, 커밋을 막는 자동 검증을 먼저 깔아라. ③ 막히면 새로 만들기 전에 이미 있는 걸 확인하라 — 대부분의 삽질은 "확인"을 건너뛴 데서 나온다.
-      </div>
-
-      <hr>
-      <p>다음 글에서는 <code>action: custom</code> 케이스를 자동화 프로젝트와 어떻게 주고받는지, 그리고 stale 경고를 실제 점검 루틴으로 돌리는 방법을 다룰 예정이다. → <a href="test-automation-engine.html">자동화 엔진 만들고 굴린 기록 보기</a></p>
-
-    </article>
-  </div>
-</main>
-
-<footer>
-  <div class="wrap">
-    <div class="tags">
-      <span class="tag">#test-automation</span>
-      <span class="tag">#yaml</span>
-      <span class="tag">#playwright</span>
-      <span class="tag">#ci</span>
-      <span class="tag">#devlog</span>
-    </div>
-    <p style="margin-top:18px">Taeik's Dev Log · 테스트 자동화 기록<br>
-    저장소: <b>TIKim1988 / test-automation-skeleton</b> (private) · 이 글은 GitHub Pages로 게시됨</p>
-  </div>
-</footer>
-
-<script>
-  function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}
-  function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}
-  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeNav()});
-</script>
-
-</body>
-</html>
+<header class="hero"><div class="wrap"><span class="kicker">초기 설계</span><h1>테스트 명세를 자동화 실행에 연결하는 방법</h1><p class="lede">시나리오, 화면 식별 규칙, 테스트 데이터를 나누고 명세와 실행의 연결을 관리한 기록.</p><div class="meta"><span>작성 Taeik</span><span>게시 <time datetime="2026-07-13">2026-07-13</time></span><span>편집 <time datetime="2026-09-24">2026-09-24</time></span></div></div></header>
+<main id="content"><div class="wrap"><article><div class="tldr"><strong>테스트 문서와 자동화가 같은 기준을 읽도록 만들었다.</strong><p>시나리오, 화면 요소를 찾는 규칙, 테스트 데이터를 분리하면 변경의 영향을 좁힐 수 있다. 다만 파일을 공유하는 것만으로 정확성이 보장되지는 않는다. 참조 오류를 검사하고, 기대 결과가 실제 코드로 검증되는지 함께 확인해야 한다.</p></div>
+<p class="record-note">2026-07-13의 초기 설계 기록이다. 당시에는 YAML을 직접 작성했다. 이후 운영에서는 CSV를 편집 원본으로 사용하고 YAML을 생성하는 방식으로 바뀌었다. 이 차이는 <a href="testcase-cicd.html">CI 운영 구조</a>에서 다룬다.</p>
+<nav class="toc" aria-label="글 목차"><strong>이 글의 순서</strong><ol><li><a href="#problem">같은 테스트를 두 번 관리하는 문제</a></li><li><a href="#structure">변경 이유에 따라 세 가지 책임을 나눴다</a></li><li><a href="#specification">동작과 기대 결과를 함께 쓴다</a></li><li><a href="#validation">실행 전에 잡을 오류와 실행해야 알 수 있는 오류</a></li><li><a href="#maintenance">변경을 반영하는 순서</a></li></ol></nav><h2 id="problem">1. 같은 테스트를 두 번 관리하는 문제</h2>
+<p>QA(Quality Assurance, 품질 보증) 업무에서 테스트케이스는 어떤 조건에서 무엇을 하고, 어떤 결과를 확인할지 정한 명세다. 이 글에서는 테스트케이스를 TC라고 줄여 쓴다.</p>
+<p>명세를 문서에 쓰고 자동화 코드를 따로 관리하면 변경 사항을 두 곳에 반영해야 한다. 예를 들어 로그인 후 도착 화면이 바뀌었을 때 코드만 수정하면 문서의 기대 결과가 실제 검사와 달라진다. 이 상태에서는 테스트가 통과해도 어떤 요구사항을 확인했는지 설명하기 어렵다.</p>
+<p>초기 설계의 목표는 사람이 읽는 시나리오를 실행 엔진의 입력으로도 사용하는 것이었다. YAML은 들여쓰기로 구조를 표현하는 텍스트 형식이다. 변경 내용을 Git에서 비교하기 쉽고, 단계별 동작을 표현할 수 있어 초기 입력 형식으로 선택했다.</p>
+<h2 id="structure">2. 변경 이유에 따라 세 가지 책임을 나눴다</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">구성</th><th scope="col">담는 내용</th><th scope="col">수정하는 상황</th></tr></thead><tbody>
+<tr><td>시나리오<br><code>testcases/</code></td><td>TC ID, 실행 순서, 기대 결과</td><td>사용자 흐름이나 검증 목적이 바뀔 때</td></tr>
+<tr><td>셀렉터<br><code>selectors/</code></td><td>버튼, 입력란 등 화면 요소를 찾는 규칙</td><td>요소의 이름, 역할, 화면 구조가 바뀔 때</td></tr>
+<tr><td>테스트 데이터<br><code>fixtures/</code></td><td>검색어, 상품 경로 등 반복 실행에 쓰는 값</td><td>상품이나 실행 조건이 바뀔 때</td></tr>
+</tbody></table></div>
+<p>시나리오는 <code>login_button</code> 같은 의미 있는 이름을 참조한다. 실제 버튼을 찾는 규칙은 셀렉터 파일이 맡는다. 이렇게 하면 버튼의 식별 규칙만 바뀐 경우 시나리오 전체를 수정할 필요가 줄어든다. 사용자 흐름까지 달라졌다면 시나리오도 다시 검토해야 한다.</p>
+<p>여기서 fixture는 테스트에 사용할 <strong>데이터 묶음</strong>을 뜻한다. 준비와 정리 절차를 실행하는 Playwright의 fixture와는 역할이 다르다.</p>
+<h2 id="specification">3. 동작과 기대 결과를 함께 쓴다</h2>
+<p>다음은 초기 YAML 구조를 설명하기 위한 예시다. 실제 실행에는 각 <code>target</code>에 대응하는 페이지 주소와 요소 정의가 필요하다.</p>
+<pre><code>id: LOGIN-001
+title: 로그인 후 대시보드가 표시된다
+steps:
+  - action: navigate
+    target: login_page
+  - action: fill
+    target: email_input
+    value: "qa@example.com"
+  - action: fill
+    target: password_input
+    value: "example-password"
+  - action: click
+    target: login_button
+  - action: assert_visible
+    target: dashboard_header</code></pre>
+<p><code>click</code>은 버튼을 누르는 동작이고, <code>assert_visible</code>은 대상이 보이는지 검사하는 판정이다. 자동화에서는 이런 결과 검사를 assertion이라고 부른다. 버튼을 눌렀다는 사실만으로 로그인 성공을 판단해서는 안 된다.</p>
+<p>예시의 제목 노출 검사는 출발점이다. 실제 로그인 테스트라면 목적지, 로그인 사용자 식별, 세션 상태 중 요구사항에 맞는 성공 기준을 더 정해야 한다. 로마스토어에서도 이후 <a href="lomastore-e2e-redesign.html">화면 노출 중심 검사를 수량과 금액 검증으로 강화</a>했다.</p>
+<h2 id="validation">4. 실행 전에 잡을 오류와 실행해야 알 수 있는 오류</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">검사 시점</th><th scope="col">확인할 내용</th><th scope="col">이 검사만으로 알 수 없는 것</th></tr></thead><tbody>
+<tr><td>파일 검증</td><td>ID 중복, 필수 필드, 지원 동작, 셀렉터와 데이터 참조</td><td>실제 화면에서 버튼이 동작하는지</td></tr>
+<tr><td>브라우저 실행</td><td>요소 탐색, 사용자 동작, 요구사항에 맞는 결과</td><td>실행하지 않은 조건의 정상 여부</td></tr>
+<tr><td>주기적 검토</td><td>최근 확인일, 정책 변경, 테스트 데이터 유효성</td><td>검토일만으로 보장되는 실행 안정성</td></tr>
+</tbody></table></div>
+<p>초기 기록에서는 로컬 검증기를 커밋 전에 실행하는 절차를 정했다. 그러나 7월 30일 재검토에서 해당 검증기가 저장소에 포함되지 않은 문제를 확인했다. <strong>실행 지침이 있다는 사실과 자동으로 적용되는 통제 장치가 있다는 사실은 다르다.</strong> 이후에는 저장소 안의 검사와 CI, 즉 변경할 때 자동으로 검증하는 과정으로 옮기는 것이 핵심 과제가 됐다.</p>
+<p>마지막 확인일이 오래된 TC는 재검토 후보로 볼 수 있다. 날짜가 오래됐다고 곧바로 실패한 TC로 분류하거나, 날짜만 갱신해 검증 완료로 처리하지 않는다.</p>
+<h2 id="maintenance">5. 변경을 반영하는 순서</h2>
+<ol class="steps"><li>현재 화면과 요구사항을 확인하고, 달라진 것이 식별 규칙인지 사용자 흐름인지 구분한다.</li><li>시나리오, 셀렉터, 테스트 데이터 중 해당 책임을 가진 원본을 수정한다.</li><li>파일 간 참조와 생성물의 일치 여부를 검사한다.</li><li>영향받는 테스트를 실행하고 기대 결과를 확인한다.</li><li>실행 환경, 결과, 확인하지 못한 범위를 기록한 뒤 검증일을 갱신한다.</li></ol>
+<p>이 구조의 효과는 “문서가 절대 어긋나지 않는다”가 아니다. 변경의 출처를 줄이고, 어긋났을 때 검출할 수 있는 지점을 만드는 데 있다. QA가 관리해야 할 핵심은 파일 형식보다 검증 의도와 실제 판정의 연결이다.</p>
+<p class="related">이어 읽기: <a href="test-automation-engine.html">명세를 브라우저 동작으로 실행하는 엔진</a> / <a href="testcase-cicd.html">변경 검증을 CI에 연결하는 방법</a></p>
+</article></div></main>
+<footer><div class="wrap"><a href="index.html">Taeik's Dev Log 홈으로</a><p>테스트의 목적, 판단 근거, 검증 결과를 기록한다.</p></div></footer>
+<script>function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}</script></body></html>

@@ -1,0 +1,17 @@
+/* Public reading structure; existing navigation behavior is preserved. */
+article{overflow-wrap:break-word;word-break:keep-all}
+article p,article li,article dd{line-height:1.85}
+article h2,article h3{line-height:1.45;text-wrap:balance}
+.record-note{font-size:14px;color:var(--muted);border-left:2px solid var(--border);padding-left:16px}
+.tldr p:last-child,.record-note:last-child{margin-bottom:0}
+.toc{margin:28px 0}.toc ol{columns:2;column-gap:28px}.toc li{break-inside:avoid;margin:6px 0;font-size:15px}
+.table-wrap{max-width:100%;overscroll-behavior-x:contain}.table-wrap table{min-width:520px}th{font-weight:650}
+pre{white-space:pre;word-break:normal;overflow-wrap:normal;max-width:100%}
+.related{border-top:1px solid var(--border);padding-top:20px;margin-top:36px}
+.reading-path{padding-left:24px}.reading-path>li{padding:8px 0}.reading-path p{margin:4px 0;color:var(--muted)}
+.post-list{display:grid;gap:16px}.post-card{padding:20px 22px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.post-card h3{margin:8px 0;font-size:19px}.post-card p{font-size:15px;color:var(--muted);margin:10px 0}.post-card time,.post-type{font-size:12px;color:var(--muted)}.post-type{color:var(--accent2)}
+.skip-link{position:fixed;left:12px;top:-100px;z-index:100;background:var(--surface);padding:10px 16px;border:2px solid var(--accent);border-radius:8px}.skip-link:focus{top:12px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:600px){.toc ol{columns:1}.post-card{padding:16px}.table-wrap table{font-size:13px}article{word-break:normal}.record-note{font-size:13px}}
+
+.lnb li a{word-break:keep-all;overflow-wrap:break-word}

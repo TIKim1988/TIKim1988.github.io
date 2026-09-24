@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="test-automation-skeleton — 사람이 쓴 YAML 시나리오를 실제 브라우저 동작으로 바꾸는 실행 엔진을 만들고, demo-app에서 굴려보고 실제 앱에 붙이기까지. Playwright 설치·flaky·경계 판단에서 넘어진 기록.">
-<title>YAML을 브라우저 클릭으로 바꾸는 엔진 만들기 · Taeik's Dev Log</title>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YAML 시나리오를 실행하는 Playwright 엔진 설계 | Taeik's Dev Log</title>
+<meta name="description" content="실행 규칙과 업무별 검증의 책임을 나누고, 실패한 계층에 맞춰 원인을 분석하는 방법.">
+<link rel="canonical" href="https://tikim1988.github.io/test-automation-engine.html">
 <style>
   :root{
     --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
@@ -129,201 +127,60 @@
       transition:opacity .2s;z-index:60}
     .lnb-overlay.open{opacity:1;visibility:visible}
   }
-</style>
-<link rel="stylesheet" href="lnb.css">
-</head>
-<body>
 
-<button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
+.table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--border);border-radius:10px}table{border-collapse:collapse;width:100%;font-size:14px;min-width:550px}th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}th{background:var(--surface2);color:var(--accent2)}td code{overflow-wrap:anywhere}h2,h3{scroll-margin-top:24px}.toc{background:var(--surface);padding:20px 24px;border:1px solid var(--border);border-radius:12px}.toc ol{padding-left:20px}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.stat{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.stat b{display:block;font-size:27px;color:var(--accent2)}.stat span{font-size:13px;color:var(--muted)}@media(max-width:600px){.stat-grid{gap:6px}.stat{padding:10px}.stat b{font-size:23px}.table-wrap{max-width:100%}}
+.tc{border:1px solid var(--border);border-radius:12px;padding:4px 20px 18px;margin:20px 0;background:var(--surface)}.tc h3{margin-top:18px;overflow-wrap:anywhere}.tc-meta{font-size:13px;color:var(--muted)}dt{font-weight:700;color:var(--accent2);margin-top:12px}dd{margin:4px 0 0}section{scroll-margin-top:25px}</style><link rel="stylesheet" href="lnb.css"><link rel="stylesheet" href="editorial.css">
+</head><body><a class="skip-link" href="#content">본문으로 이동</a><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
 <div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
-<nav class="lnb" id="lnb" aria-label="사이트 네비게이션">
-  <button class="close" aria-label="닫기" onclick="closeNav()">×</button>
-  <div class="brand">Taeik's Dev Log</div>
-  <a class="home" href="index.html">🏠 홈</a>
-
-  <details class="nav-group" open><summary>📁 테스트케이스 관리 (TC)</summary>
-  <ul>
-    <li><a href="lomastore-testcases.html">로마스토어 E2E 테스트케이스 29개: 절차와 기대 결과<span class="date">2026-09-22</span></a></li>
-    <li><a href="testcase-management.html">사람이 읽고 기계가 실행하는 테스트 케이스 만들기<span class="date">2026-07-13</span></a></li>
-    <li><a href="testcase-cicd.html">손으로 고치는 게 병목이다 — 테스트케이스 CI/CD 다시 짜기<span class="date">2026-07-30</span></a></li>
-  </ul></details>
-
-  <details class="nav-group"><summary>📁 자동화 엔진</summary>
-  <ul>
-    <li><a href="lomastore-popup-handling.html">갑자기 실패한 홈 테스트 5개, 이벤트 팝업을 안전하게 닫기<span class="date">2026-09-24</span></a></li>
-    <li><a href="lomastore-e2e-redesign.html">23개 TC를 다시 검토한 로마스토어 E2E 재설계<span class="date">2026-09-08</span></a></li>
-    <li><a class="active" href="test-automation-engine.html">YAML을 브라우저 클릭으로 바꾸는 엔진 만들기<span class="date">2026-07-13</span></a></li>
-    <li><a href="self-healing-locator.html">셀렉터가 낡아도 안 깨지게 — 셀프힐링 토대 만들기<span class="date">2026-07-27</span></a></li>
-  </ul></details>
+<nav class="lnb" id="lnb" aria-label="사이트 내비게이션"><button class="close" aria-label="메뉴 닫기" onclick="closeNav()">×</button><div class="brand">Taeik's Dev Log</div><a class="home" href="index.html">홈</a>
+<details class="nav-group" open><summary>테스트케이스 관리 (TC)</summary><ul>
+<li><a href="lomastore-testcases.html">로마스토어 테스트케이스 29개: 범위와 기대 결과<span class="date">2026-09-22</span></a></li>
+<li><a href="testcase-management.html">테스트 명세를 자동화 실행에 연결하는 방법<span class="date">2026-07-13</span></a></li>
+<li><a href="testcase-cicd.html">테스트케이스 변경을 검증하는 CI 운영 구조<span class="date">2026-07-30</span></a></li>
+</ul></details>
+<details class="nav-group"><summary>자동화 엔진</summary><ul>
+<li><a href="lomastore-popup-handling.html">이벤트 팝업으로 막힌 테스트: 원인 분석과 대응<span class="date">2026-09-24</span></a></li>
+<li><a href="lomastore-e2e-redesign.html">로마스토어 E2E 재설계: 노출 확인에서 결과 검증으로<span class="date">2026-09-08</span></a></li>
+<li><a class="active" aria-current="page" href="test-automation-engine.html">YAML 시나리오를 실행하는 Playwright 엔진 설계<span class="date">2026-07-13</span></a></li>
+<li><a href="self-healing-locator.html">셀렉터 변경에 대비하는 감지와 기록 구조<span class="date">2026-07-27</span></a></li>
+</ul></details>
 </nav>
-
-<header class="hero">
-  <div class="wrap">
-    <span class="kicker">DEV LOG · 테스트 자동화</span>
-    <h1>YAML 한 줄을 브라우저 클릭으로 — 실행 엔진을 만들고 굴린 기록</h1>
-    <p class="lede">사람이 읽는 시나리오는 <a href="https://tikim1988.github.io/">지난 글</a>에서 만들었다. 이번엔 그 YAML을 <em>진짜 브라우저 동작</em>으로 바꾸는 인터프리터를 세우고, 가짜 화면에서 굴려보고, 실제 앱에 붙이기까지. 코드보다 설치·flaky·경계 판단에서 더 넘어졌다.</p>
-    <div class="meta">
-      <span>✍️ <b>Taeik</b></span>
-      <span>📅 2026-07-13</span>
-      <span>📦 <b>test-automation-skeleton</b></span>
-      <span>⏱️ 약 7분</span>
-    </div>
-  </div>
-</header>
-
-<main>
-  <div class="wrap">
-    <article>
-
-      <div class="tldr">
-        <b>요약 먼저.</b> 사람이 쓴 YAML 시나리오를 읽어 Playwright 명령으로 번역하는 <strong>인터프리터</strong>를 만들었다. 스텝 어휘는 11개로 <em>고정</em>하고, 그걸로 못 담는 동작(파일 업로드·다중 탭 등)은 <code>action: custom</code>이라는 확장점 하나로 몰아 스펙 정의 프로젝트와 경계를 그었다. 개발은 <code>demo-app</code>이라는 가짜 화면 위에서 하고, 실제 앱엔 <code>baseURL</code>만 바꿔 붙인다. 정작 시간을 잡아먹은 건 인터프리터 로직이 아니라 <strong>Playwright 브라우저 설치, flaky 테스트, 그리고 "이 로직을 어디에 둘 것인가"라는 경계 판단</strong>이었다.
-      </div>
-
-      <h2><span class="n">01</span>이 프로젝트가 맡은 것 — 경계부터</h2>
-      <p>지난 글의 프로젝트는 <strong>스펙을 소유</strong>한다. 무엇을 테스트할지, 화면 요소를 뭐라 부를지(<code>testcases/</code>, <code>selectors/</code>, <code>fixtures/</code>)를 관리한다. 이 프로젝트는 그걸 <strong>실행</strong>한다. 같은 저장소 안에 살지만 소유 영역이 다르다.</p>
-      <p>가장 먼저 못 박은 규칙은 <strong>"이 프로젝트는 <code>testcases/selectors/fixtures</code>를 읽기만 한다"</strong>는 거였다. 실행하다 셀렉터가 틀린 걸 발견해도 내가 직접 고치지 않는다. 고칠 내용을 정리해서 스펙 쪽에 넘긴다. 경계를 흐리는 순간 "문서와 코드를 하나로 둔다"는 전제 자체가 무너지기 때문이다.</p>
-
-      <div class="diagram">
-        <div class="stack">
-          <div class="layer ext"><div class="t">testcases / selectors / fixtures &nbsp;— 읽기 전용</div><div class="d">스펙 소유 프로젝트가 관리. 여기선 입력으로만 받는다.</div></div>
-          <div class="layer own"><div class="t">automation/runner/interpreter.ts &nbsp;— 내 소유</div><div class="d">YAML 스텝 → Playwright 명령으로 번역하는 해석기.</div></div>
-          <div class="layer own"><div class="t">automation/steps/custom.ts &nbsp;— 내 소유</div><div class="d">기본 어휘로 못 담는 로직의 확장점.</div></div>
-          <div class="layer own"><div class="t">automation/tests/*.spec.ts &nbsp;— 내 소유</div><div class="d">인터프리터를 구동하는 Playwright 진입점.</div></div>
-        </div>
-      </div>
-
-      <h2><span class="n">02</span>인터프리터 — YAML을 Playwright로 번역하기</h2>
-      <p>핵심은 단순하다. 시나리오의 스텝 하나를 읽어 <code>action</code>을 보고, 그에 맞는 Playwright 호출로 바꾼다. 스텝의 <code>target</code>은 셀렉터 파일을 거쳐 실제 로케이터로 풀린다. 대략 이런 모양이다.</p>
-
-<pre><code><span class="tok-k">async function</span> runStep(page, step, sel, fx) {
-  <span class="tok-k">const</span> locator = () =&gt; page.locator(resolve(sel, step.target)); <span class="tok-c">// 이름 → 실제 셀렉터</span>
-  <span class="tok-k">switch</span> (step.action) {
-    <span class="tok-k">case</span> <span class="tok-s">"navigate"</span>:       <span class="tok-k">return</span> page.goto(resolve(sel, step.target));
-    <span class="tok-k">case</span> <span class="tok-s">"click"</span>:          <span class="tok-k">return</span> locator().click();
-    <span class="tok-k">case</span> <span class="tok-s">"fill"</span>:           <span class="tok-k">return</span> locator().fill(interpolate(step.value, fx));
-    <span class="tok-k">case</span> <span class="tok-s">"assert_visible"</span>: <span class="tok-k">return</span> expect(locator()).toBeVisible();
-    <span class="tok-k">case</span> <span class="tok-s">"assert_text"</span>:    <span class="tok-k">return</span> expect(locator()).toHaveText(step.value);
-    <span class="tok-c">// select / check / uncheck / assert_hidden / wait ...</span>
-    <span class="tok-k">case</span> <span class="tok-s">"custom"</span>:         <span class="tok-k">return</span> runCustom(step.name, { page, step, sel, fx });
-    <span class="tok-k">default</span>: <span class="tok-k">throw new</span> Error(<span class="tok-s">`알 수 없는 action: </span>${step.action}<span class="tok-s">`</span>);
-  }
-}</code></pre>
-
-      <p>어휘는 딱 11개로 고정했다 — <code>navigate</code>, <code>click</code>, <code>fill</code>, <code>select</code>, <code>check</code>, <code>uncheck</code>, <code>assert_visible</code>, <code>assert_hidden</code>, <code>assert_text</code>, <code>wait</code>, <code>custom</code>. <strong>어휘를 늘리고 싶은 유혹이 계속 온다.</strong> "hover도 넣을까, double_click도…" 하지만 어휘가 늘수록 스펙을 쓰는 사람이 외워야 할 게 늘고, 인터프리터의 <code>switch</code>도 비대해진다. 그래서 규칙을 세웠다 — <strong>기본 어휘는 "화면을 읽고 쓰는 최소 동작"까지만.</strong> 그 밖은 전부 다음 장의 <code>custom</code>으로.</p>
-
-      <h2><span class="n">03</span>못 담는 건 전부 custom.ts 하나로</h2>
-      <p>파일 업로드, 다운로드 검증, 다중 탭, 드래그 앤 드롭… 이런 건 <code>fill</code> 한 줄로 안 된다. 여기서 두 갈래 길이 있었다.</p>
-      <ul class="clean">
-        <li><strong>A안</strong> — 필요할 때마다 인터프리터에 <code>case</code>를 추가한다. 당장은 편하다.</li>
-        <li><strong>B안</strong> — 복잡한 동작은 전부 <code>action: custom</code> + 이름표로 받고, 구현은 <code>custom.ts</code>에 몰아둔다.</li>
-      </ul>
-      <p>B안을 택했다. 이유는 <strong>경계</strong> 때문이다. 스펙을 쓰는 사람은 "이런 동작이 필요하다"는 <em>이름</em>만 선언하면 된다. 실제로 그 이름이 무슨 짓을 하는지는 이 프로젝트의 몫이다.</p>
-
-<pre><code><span class="tok-c"># 스펙 쪽 YAML — "무엇이 필요한지"만 선언</span>
-<span class="tok-a">- action</span>: custom
-  <span class="tok-a">name</span>: upload_profile_image
-  <span class="tok-a">value</span>: <span class="tok-s">"fixtures/avatar.png"</span></code></pre>
-
-<pre><code><span class="tok-c">// custom.ts — "실제로 어떻게" 는 여기 몫</span>
-register(<span class="tok-s">"upload_profile_image"</span>, <span class="tok-k">async</span> ({ page, step }) =&gt; {
-  <span class="tok-k">const</span> [chooser] = <span class="tok-k">await</span> Promise.all([
-    page.waitForEvent(<span class="tok-s">"filechooser"</span>),
-    page.getByTestId(<span class="tok-s">"avatar-upload"</span>).click(),
-  ]);
-  <span class="tok-k">await</span> chooser.setFiles(step.value);
-});</code></pre>
-
-      <p>덕분에 스펙은 얇게 유지되고, 지저분한 브라우저 제어 코드는 한 파일에 격리된다. <strong>"스펙 정의는 저쪽, 구현은 이쪽"</strong>이라는 선을 코드 구조로 강제한 셈이다.</p>
-
-      <div class="quote">복잡함을 없앨 수 없으면, 한 곳에 가둬라. 어휘를 늘리는 대신 확장점 하나를 판 이유.</div>
-
-      <h2><span class="n">04</span>가짜 화면(demo-app) 위에서 먼저 굴린다</h2>
-      <p>뼈대를 만들 땐 실제 앱이 걸림돌이다. 로그인 막히고, 데이터 바뀌고, 느리고, 남의 서버라 마음대로 못 건드린다. 그래서 <code>demo-app/</code>이라는 <strong>가짜 화면</strong>을 하나 뒀다. 인터프리터·셀렉터 규칙·custom 확장이 제대로 도는지 검증하는 용도다.</p>
-      <p>실제 앱으로 옮길 땐 코드를 고치는 게 아니라 <strong>설정 두 줄</strong>만 바꾼다. <code>playwright.config.ts</code>의 <code>baseURL</code>과 <code>webServer</code>를 실제 앱으로 돌리고 <code>demo-app/</code>은 지운다.</p>
-
-<pre><code><span class="tok-c">// playwright.config.ts — 개발용 → 실제 앱, 스위치는 여기 한 곳</span>
-export default defineConfig({
-  use: { baseURL: process.env.<span class="tok-a">BASE_URL</span> ?? <span class="tok-s">"http://localhost:4173"</span> },
-  webServer: process.env.<span class="tok-a">BASE_URL</span>
-    ? <span class="tok-k">undefined</span>                                  <span class="tok-c">// 실제 앱: 직접 안 띄움</span>
-    : { command: <span class="tok-s">"npm run demo"</span>, port: 4173 },   <span class="tok-c">// 개발: demo-app 자동 기동</span>
-});</code></pre>
-
-      <p>포인트는 <strong>테스트 로직이 어느 화면을 상대하는지 몰라도 된다</strong>는 것. 시나리오도 인터프리터도 그대로, 상대 서버만 갈아끼운다.</p>
-
-      <h2><span class="n">05</span>시행착오 — 넘어진 건 로직이 아니었다</h2>
-      <p>인터프리터 <code>switch</code> 자체는 순탄했다. 진짜 시간을 먹은 건 그 주변이었다.</p>
-
-      <h3>삽질 1 — Playwright 브라우저 설치가 sudo에서 막힘</h3>
-      <p>샌드박스에서 <code>npx playwright install --with-deps chromium</code>을 돌렸더니 시스템 라이브러리 설치 단계에서 권한이 없어 실패했다. <code>--with-deps</code>는 <code>apt-get</code>으로 OS 패키지를 깔려 하는데, 그 권한이 없었던 것. 해법은 <strong>2단계 폴백</strong>이었다 — 되면 <code>--with-deps</code>, 안 되면 브라우저 바이너리만이라도 받는다.</p>
-
-<pre><code><span class="tok-c"># 권한 되면 전부, 막히면 브라우저 바이너리만이라도</span>
-npx playwright install --with-deps chromium || npx playwright install chromium</code></pre>
-
-      <p><code>||</code> 한 줄이지만 교훈은 명확했다 — <strong>"환경이 당연히 갖춰져 있겠지"라는 가정부터 틀린다.</strong> (지난 글의 <code>openssh-client</code>가 아예 없던 것과 같은 종류의 실수다. 인증 삽질은 그 글에서 이미 다뤘으니 여기선 한 줄로 넘어간다.)</p>
-
-      <h3>삽질 2 — flaky, 진짜 실패인 척하는 가짜 실패</h3>
-      <p>실제 앱에 붙이자 <strong>같은 테스트가 됐다 안 됐다</strong> 하기 시작했다. 원인은 대개 타이밍이다 — 요소가 뜨기 전에 클릭하거나, 애니메이션 중에 텍스트를 읽거나, 네트워크가 느린 순간에 걸린다. 여기서 반사적으로 <code>wait: 3000</code> 같은 <strong>고정 대기를 흩뿌리고 싶은 유혹</strong>이 온다. 그건 테스트를 느리게 만들면서 근본은 못 고친다.</p>
-      <p>대신 두 가지로 잡았다. 첫째, 인터프리터의 assert를 전부 <strong>Playwright의 자동 대기(web-first assertion)</strong>에 태웠다. <code>toBeVisible()</code>은 요소가 나타날 때까지 알아서 기다린다. 둘째, 그래도 남는 진짜 flaky는 숨기지 않고 <strong>재시도 횟수를 명시</strong>해 드러냈다.</p>
-
-<pre><code><span class="tok-c">// flaky를 0으로 숨기지 말고, 몇 번 흔들리는지 보이게</span>
-retries: process.env.<span class="tok-a">CI</span> ? <span class="tok-s">2</span> : <span class="tok-s">0</span>,
-reporter: [[<span class="tok-s">"html"</span>], [<span class="tok-s">"list"</span>]],   <span class="tok-c">// 실패 리포트로 원인 추적</span></code></pre>
-
-      <div class="callout warn">
-        <span class="h">고정 sleep은 flaky의 진통제일 뿐</span>
-        <code>wait</code> 스텝은 어휘에 넣어두긴 했지만 <strong>최후의 수단</strong>으로만 쓴다. "요소가 뜰 때까지"를 조건으로 기다리는 게 원칙이고, "몇 초"를 기다리는 건 예외다. 이 규칙을 안 세우면 시나리오가 온통 <code>wait</code>로 도배되면서 느려지고, 정작 진짜 버그는 대기 뒤에 숨는다.
-      </div>
-
-      <h3>삽질 3 — "이 로직 어디 두지?"가 제일 오래 걸렸다</h3>
-      <p>기술적 버그보다 <strong>판단</strong>이 더 오래 걸렸다. 새 동작이 필요할 때마다 매번 같은 질문 앞에 섰다 — 인터프리터에 기본 <code>case</code>로 넣나, <code>custom.ts</code>로 빼나? 결국 기준을 문장으로 고정하고 나서야 고민이 멈췄다.</p>
-      <ul class="clean">
-        <li><strong>여러 시나리오가 공통으로 쓰는 화면 동작</strong>이고 어휘로 자연스럽게 이름 붙는다 → 인터프리터 기본 <code>case</code>.</li>
-        <li><strong>특정 기능에만 쓰이거나 브라우저 제어가 지저분</strong>하다(업로드·다중 탭 등) → <code>custom.ts</code>.</li>
-      </ul>
-      <p>기준이 없을 땐 그때그때 기분으로 갈렸고, 그 결과 비슷한 로직이 두 곳에 흩어졌다. 기준 한 줄이 리팩터링 몇 시간을 아꼈다.</p>
-
-      <h2><span class="n">06</span>구축에서 운영으로 넘어가며 세운 루틴</h2>
-      <p>이제 뼈대는 섰고, 초점은 "안 깨지게 굴리기"로 옮겨갔다. 반복 작업은 순서로 못 박아 뒀다.</p>
-      <ol class="steps">
-        <li>스펙 쪽에서 새 시나리오/셀렉터가 넘어오면 <code>git pull</code>로 읽기 전용 입력을 갱신.</li>
-        <li>demo-app에서 먼저 돌려 인터프리터가 새 스텝을 이해하는지 확인.</li>
-        <li>기본 어휘로 안 되면 → <code>custom.ts</code>에 이름표 붙여 구현.</li>
-        <li>실제 앱(<code>BASE_URL</code>)으로 돌려 flaky 여부 확인 — 흔들리면 원인(타이밍/셀렉터)부터 추적.</li>
-        <li>CI에서 <code>retries</code>·리포트로 안정성 지표를 남기고, 실패는 숨기지 말고 드러낸다.</li>
-      </ol>
-
-      <div class="tldr">
-        <b>배운 것 세 줄.</b> ① 실행 엔진의 어휘는 최소로 고정하고, 복잡함은 <code>custom</code> 확장점 하나에 가둬라. ② 뼈대는 실제 앱이 아니라 가짜 화면(demo-app) 위에서 세우고, 전환은 설정 한 곳으로. ③ 넘어지는 건 대개 로직이 아니라 <strong>환경 설치·flaky·경계 판단</strong>이다 — 각각을 폴백 한 줄, 자동 대기, 기준 문장으로 막아둬라.
-      </div>
-
-      <hr>
-      <p>다음 글에서는 <code>custom.ts</code>에 쌓인 확장들을 어떻게 정리하는지, 그리고 CI 실패 리포트를 스펙 쪽 <code>last_verified</code> 갱신 루틴과 어떻게 연결하는지를 다룰 예정이다.</p>
-
-    </article>
-  </div>
-</main>
-
-<footer>
-  <div class="wrap">
-    <div class="tags">
-      <span class="tag">#test-automation</span>
-      <span class="tag">#playwright</span>
-      <span class="tag">#interpreter</span>
-      <span class="tag">#flaky</span>
-      <span class="tag">#ci</span>
-      <span class="tag">#devlog</span>
-    </div>
-    <p style="margin-top:18px">Taeik's Dev Log · 테스트 자동화 기록<br>
-    저장소: <b>TIKim1988 / test-automation-skeleton</b> (private) · 이 글은 GitHub Pages로 게시됨 · <a href="https://tikim1988.github.io/">← 지난 글: 사람이 읽고 기계가 실행하는 테스트 케이스 만들기</a></p>
-  </div>
-</footer>
-
-<script>
-  function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}
-  function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}
-  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeNav()});
-</script>
-
-</body>
-</html>
+<header class="hero"><div class="wrap"><span class="kicker">구현 기록</span><h1>YAML 시나리오를 실행하는 Playwright 엔진 설계</h1><p class="lede">실행 규칙과 업무별 검증의 책임을 나누고, 실패한 계층에 맞춰 원인을 분석하는 방법.</p><div class="meta"><span>작성 Taeik</span><span>게시 <time datetime="2026-07-13">2026-07-13</time></span><span>편집 <time datetime="2026-09-24">2026-09-24</time></span></div></div></header>
+<main id="content"><div class="wrap"><article><div class="tldr"><strong>실행 엔진의 역할은 시나리오를 브라우저 동작과 결과 검사로 정확하게 연결하는 것이다.</strong><p>공통 동작은 작은 실행 규칙으로 유지하고, 상품 수량이나 장바구니 금액처럼 업무에 특화된 검증은 별도 함수로 분리했다. 이렇게 나누면 화면이 바뀌었을 때 명세와 실행 코드 중 어디를 수정해야 하는지 판단하기 쉽다.</p></div>
+<p class="record-note">2026-07-13에 시작한 엔진 설계 기록이다. 초기의 예제 화면 검증과 이후 로마스토어 적용을 구분해 설명한다. 현재 운영 명령과 실행 범위는 <a href="testcase-cicd.html">CI 운영 구조</a>를 기준으로 확인할 수 있다.</p>
+<nav class="toc" aria-label="글 목차"><strong>이 글의 순서</strong><ol><li><a href="#flow">시나리오 한 줄이 실행되는 과정</a></li><li><a href="#actions">기본 동작은 작게, 복합 검증은 명시적으로</a></li><li><a href="#demo">엔진 검사와 서비스 검사를 분리한다</a></li><li><a href="#waiting">기다릴 시간보다 기다릴 상태를 정한다</a></li><li><a href="#decision">실패한 계층에 맞춰 수정한다</a></li></ol></nav><h2 id="flow">1. 시나리오 한 줄이 실행되는 과정</h2>
+<p>Playwright는 브라우저에서 클릭, 입력, 화면 검사를 수행하는 테스트 도구다. YAML은 들여쓰기로 데이터 구조를 표현하는 텍스트 형식이다. 이 프로젝트는 YAML 시나리오를 읽는 해석기(interpreter)를 Playwright 위에 두었다. 해석기는 각 단계의 동작 이름을 확인하고 해당 Playwright 명령을 호출한다.</p>
+<div class="diagram" aria-label="실행 엔진의 처리 순서">시나리오 읽기 → 동작과 대상 확인 → 화면 요소 찾기 → 동작 수행 → 기대 결과 검사</div>
+<div class="table-wrap"><table><thead><tr><th scope="col">구성</th><th scope="col">책임</th><th scope="col">예시</th></tr></thead><tbody>
+<tr><td>시나리오</td><td>실행 순서와 검사할 대상 정의</td><td>검색어 입력 후 결과 확인</td></tr>
+<tr><td>셀렉터와 데이터</td><td>요소를 찾는 규칙과 입력값 제공</td><td>검색창의 역할, 지정 검색어</td></tr>
+<tr><td>해석기</td><td>지원하는 동작을 Playwright 호출로 변환</td><td><code>fill</code>, <code>click</code>, <code>assert_text</code></td></tr>
+<tr><td>업무별 검증 함수</td><td>여러 화면이나 값의 관계 확인</td><td>수량 변경에 따른 금액 계산</td></tr>
+</tbody></table></div>
+<p>로케이터(locator)는 실행 시점에 화면 요소를 찾고 조작하기 위한 Playwright 객체다. 셀렉터 파일의 정의를 읽어 로케이터를 만든다. 버튼의 역할과 이름처럼 사용자가 인식하는 속성으로 찾고, 같은 이름이 반복되면 검색 범위를 특정 영역으로 좁힌다. <a href="https://playwright.dev/docs/locators">Playwright 로케이터 문서</a>에서 이 방식의 동작을 확인할 수 있다.</p>
+<h2 id="actions">2. 기본 동작은 작게, 복합 검증은 명시적으로</h2>
+<p>초기 엔진의 기본 동작은 이동, 클릭, 입력, 선택, 체크, 체크 해제, 노출 검사, 숨김 검사, 텍스트 검사, 대기, 사용자 정의 동작의 11개였다. 동작을 추가할 때마다 시나리오 형식, 검증기, 해석기를 함께 수정해야 하므로 업무별 요구를 무조건 기본 동작으로 늘리지 않았다.</p>
+<p>예를 들어 “장바구니 수량을 늘리고 금액을 확인한다”는 클릭 한 번의 문제가 아니다. 변경 전 기준 금액, 변경 후 수량, 상품 금액과 합계의 관계를 함께 읽어야 한다. 이런 검증은 <code>custom</code>, 즉 이름을 붙인 별도 함수로 연결한다.</p>
+<pre><code># 구조를 설명하기 위한 예시이며 실제 등록 이름과는 다를 수 있다.
+- action: custom
+  name: verify_cart_quantity_and_amount</code></pre>
+<p>사용자 정의 함수는 복잡한 동작을 담을 수 있지만, 이름만 보고 무엇을 검사하는지 알 수 있어야 한다. 함수 안에서 입력만 하고 결과를 확인하지 않거나, 여러 실패를 한꺼번에 무시하면 명세의 의미가 약해진다. 실행 보고서에는 준비, 동작, 판정을 구분해 남기는 것이 좋다.</p>
+<h2 id="demo">3. 엔진 검사와 서비스 검사를 분리한다</h2>
+<p>초기 엔진은 예제 화면인 <code>demo-app</code>에서 먼저 검증했다. 외부 사이트의 로그인 정책이나 상품 변화에 영향을 받지 않고, 입력한 시나리오가 의도한 브라우저 명령으로 연결되는지 확인하기 위해서다.</p>
+<p>예제 화면 통과는 실서비스 통과를 뜻하지 않는다. 실제 서비스로 연결할 때는 주소 설정 외에도 셀렉터, 인증 조건, 테스트 데이터, 기대 결과를 확인해야 한다. 초기 글에서 “설정 두 줄만 바꾸면 된다”고 설명했던 부분은 이 차이를 충분히 담지 못했다.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">검증 대상</th><th scope="col">대표 질문</th></tr></thead><tbody>
+<tr><td>실행 엔진</td><td>정의된 동작을 처리하는가? 누락된 데이터나 알 수 없는 동작을 명확히 실패시키는가?</td></tr>
+<tr><td>실제 서비스</td><td>상품이 올바르게 담기는가? 수량, 금액, 선택 상태가 요구사항과 일치하는가?</td></tr>
+<tr><td>실행 환경</td><td>브라우저가 시작되는가? 필요한 시스템 구성과 네트워크 접근이 가능한가?</td></tr>
+</tbody></table></div>
+<h2 id="waiting">4. 기다릴 시간보다 기다릴 상태를 정한다</h2>
+<p>“3초 뒤 검사”보다 “담기 완료 안내가 나타난 뒤 장바구니를 검사”하는 편이 목적을 분명하게 드러낸다. Playwright의 자동 대기 검증은 제한 시간 안에서 조건이 만족되는지 반복 확인한다. 그래도 조건이 충족되지 않으면 실패로 남겨야 한다.</p>
+<p>간헐적으로 성공과 실패가 바뀌는 현상을 flaky라고 부른다. 렌더링 시점뿐 아니라 상품 데이터, 네트워크, 상태 공유, 실제 서비스 결함도 원인이 될 수 있다. 이를 “가짜 실패”라고 단정하면 조사할 신호를 놓친다.</p>
+<p>테스트 전체 재시도와 한 검사의 자동 대기는 다르다. 재시도에서 통과한 결과는 첫 실행 통과와 구분한다. <a href="https://playwright.dev/docs/test-retries">Playwright의 재시도 분류</a>도 처음 실패한 뒤 재시도에서 성공한 테스트를 flaky로 구분한다.</p>
+<h2 id="decision">5. 실패한 계층에 맞춰 수정한다</h2>
+<ul class="clean"><li><strong>브라우저가 시작되지 않음:</strong> 환경 문제로 분류한다. 이 결과만으로 서비스 결함을 보고하지 않는다.</li><li><strong>요소를 찾지 못함:</strong> 셀렉터뿐 아니라 진입 화면, 팝업, 접근 정책, 데이터 조건을 확인한다.</li><li><strong>동작은 끝났지만 결과가 다름:</strong> 기대 결과와 서비스 정책을 대조한다. 통과시키기 위해 검사를 노출 확인으로 바꾸지 않는다.</li><li><strong>일부 실행에서만 실패함:</strong> 실패 시점과 상태를 보존하고 재현 조건을 좁힌다. 재시도 성공만으로 종결하지 않는다.</li></ul>
+<p>엔진을 단순하게 유지하는 이유는 코드량 자체를 줄이기 위해서만은 아니다. 실패가 명세, 화면 식별, 데이터, 서비스 동작 중 어느 지점에서 발생했는지 설명할 수 있어야 수정도 검증도 정확해진다.</p>
+<p class="related">적용 사례: <a href="lomastore-e2e-redesign.html">결과 검증 중심의 재설계</a> / <a href="lomastore-popup-handling.html">여러 테스트를 동시에 막은 이벤트 팝업</a></p>
+</article></div></main>
+<footer><div class="wrap"><a href="index.html">Taeik's Dev Log 홈으로</a><p>테스트의 목적, 판단 근거, 검증 결과를 기록한다.</p></div></footer>
+<script>function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}</script></body></html>
