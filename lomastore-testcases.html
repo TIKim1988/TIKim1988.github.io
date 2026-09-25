@@ -135,18 +135,19 @@
 </head><body><a class="skip-link" href="#content">본문으로 이동</a><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
 <div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
 <nav class="lnb" id="lnb" aria-label="사이트 내비게이션"><button class="close" aria-label="메뉴 닫기" onclick="closeNav()">×</button><div class="brand">Taeik's Dev Log</div><a class="home" href="index.html">홈</a>
-<details class="nav-group" open><summary>테스트케이스 관리 (TC)</summary><ul>
+<details class="nav-group" data-nav-group="testcases" data-default-open="true" open><summary>테스트케이스 관리 (TC)</summary><ul>
 <li><a class="active" aria-current="page" href="lomastore-testcases.html">로마스토어 테스트케이스 29개: 범위와 기대 결과<span class="date">2026-09-22</span></a></li>
 <li><a href="testcase-management.html">테스트 명세를 자동화 실행에 연결하는 방법<span class="date">2026-07-13</span></a></li>
 <li><a href="testcase-cicd.html">테스트케이스 변경을 검증하는 CI 운영 구조<span class="date">2026-07-30</span></a></li>
 </ul></details>
-<details class="nav-group"><summary>자동화 엔진</summary><ul>
+<details class="nav-group" data-nav-group="engine" data-default-open="false"><summary>자동화 엔진</summary><ul>
 <li><a href="lomastore-popup-handling.html">이벤트 팝업으로 막힌 테스트: 원인 분석과 대응<span class="date">2026-09-24</span></a></li>
 <li><a href="lomastore-e2e-redesign.html">로마스토어 E2E 재설계: 노출 확인에서 결과 검증으로<span class="date">2026-09-08</span></a></li>
 <li><a href="test-automation-engine.html">YAML 시나리오를 실행하는 Playwright 엔진 설계<span class="date">2026-07-13</span></a></li>
 <li><a href="self-healing-locator.html">셀렉터 변경에 대비하는 감지와 기록 구조<span class="date">2026-07-27</span></a></li>
 </ul></details>
 </nav>
+<script src="navigation.js?v=20260926-1"></script>
 <div class="theme-controls" role="group" aria-label="화면 테마" hidden>
   <button type="button" data-theme-choice="system" aria-pressed="true" title="시스템 설정에 자동으로 맞춤">시스템</button>
   <button type="button" data-theme-choice="light" aria-pressed="false" title="밝은 기본 테마">기본</button>
