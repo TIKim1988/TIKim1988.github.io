@@ -143,8 +143,8 @@
 <div class="nav-group"><h2 class="nav-group-title">자동화 엔진</h2><ul>
 <li><a href="lomastore-popup-handling.html">이벤트 팝업으로 막힌 테스트: 원인 분석과 대응<span class="date">2026-09-24</span></a></li>
 <li><a href="lomastore-e2e-redesign.html">로마스토어 E2E 재설계: 노출 확인에서 결과 검증으로<span class="date">2026-09-08</span></a></li>
-<li><a href="test-automation-engine.html">YAML 시나리오를 실행하는 Playwright 엔진 설계<span class="date">2026-07-13</span></a></li>
-<li><a href="self-healing-locator.html">셀렉터 변경에 대비하는 감지와 기록 구조<span class="date">2026-07-27</span></a></li>
+<li><a href="test-automation-engine.html?v=20260926-3">YAML 시나리오를 실행하는 Playwright 엔진 설계<span class="date">2026-07-13</span></a></li>
+<li><a href="self-healing-locator.html?v=20260926-3">셀렉터 변경에 대비하는 감지와 기록 구조<span class="date">2026-07-27</span></a></li>
 </ul></div>
 </nav>
 <div class="theme-controls" role="group" aria-label="화면 테마" hidden>
@@ -193,7 +193,7 @@ npm run test:regression</code></pre>
 <h2 id="proposals">5. 아직 제안으로 남겨 둔 자동화</h2>
 <ul class="clean"><li><strong>변경 영향에 따른 테스트 선택:</strong> 수정한 TC만 실행하면 공유 셀렉터나 공통 함수의 영향을 놓칠 수 있다. 의존 관계를 확인할 수 있을 때 선택 실행을 적용한다.</li><li><strong>셀렉터 수정 제안:</strong> 화면 요소 식별 규칙이 달라지면 수정안을 만들 수 있다. 자동 대체가 완성되지 않은 현재 상태에서 수정 PR 생성까지 동작한다고 설명할 수는 없다.</li><li><strong>문서 자동 생성 확대:</strong> 목록, 재검토 대상, 실행 범위를 원본에서 생성하는 방향이다. 현재 도입된 검사와 앞으로 만들 생성기를 구분해 관리한다.</li></ul>
 <p>우선순위는 오류 검출을 앞당기는 검사, 결과의 추적 가능성, 편집 편의성 순으로 잡았다. 자동 수정은 마지막 단계다. 수정된 테스트가 더 쉽게 통과하는 것보다 원래 검증 의도를 유지하는지 판단할 근거가 먼저 필요하기 때문이다.</p>
-<p class="related">실행 범위: <a href="lomastore-testcases.html">29개 테스트케이스 명세</a> / 구현 범위: <a href="self-healing-locator.html">셀렉터 감지와 기록 구조</a></p>
+<p class="related">실행 범위: <a href="lomastore-testcases.html">29개 테스트케이스 명세</a> / 구현 범위: <a href="self-healing-locator.html?v=20260926-3">셀렉터 감지와 기록 구조</a></p>
 </article></div></main>
 <footer><div class="wrap"><a href="index.html">Taeik's Dev Log 홈으로</a><p>테스트의 목적, 판단 근거, 검증 결과를 기록한다.</p></div></footer>
 <script>function openNav(){document.getElementById('lnb').classList.add('open');document.getElementById('lnbOverlay').classList.add('open')}function closeNav(){document.getElementById('lnb').classList.remove('open');document.getElementById('lnbOverlay').classList.remove('open')}</script></body></html>
