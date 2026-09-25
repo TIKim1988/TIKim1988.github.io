@@ -1,0 +1,38 @@
+:root{
+    color-scheme:light;
+    --bg:#f7f8fa; --surface:#ffffff; --surface2:#edf1f5;
+    --border:#cdd5df; --text:#1f2937; --muted:#566171;
+    --accent:#135fba; --accent2:#226b3c; --warn:#865d00; --danger:#aa2727;
+    --code:#f0f3f7; --code-text:#26374b; --code-comment:#596574;
+}
+:root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0b0d10; --surface:#15181d; --surface2:#20252d;
+    --border:#343c49; --text:#e6edf3; --muted:#a6b1bf;
+    --accent:#79b8ff; --accent2:#8cde9c; --warn:#e3b341; --danger:#ff938a;
+    --code:#101318; --code-text:#d7e2ee; --code-comment:#a0abba;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme]){
+    color-scheme:dark;
+    --bg:#0b0d10; --surface:#15181d; --surface2:#20252d;
+    --border:#343c49; --text:#e6edf3; --muted:#a6b1bf;
+    --accent:#79b8ff; --accent2:#8cde9c; --warn:#e3b341; --danger:#ff938a;
+    --code:#101318; --code-text:#d7e2ee; --code-comment:#a0abba;
+  }
+}
+
+strong{color:var(--text)}
+code,pre code{color:var(--code-text)}
+.tok-c{color:var(--code-comment)}
+.nav-toggle{background:var(--surface)}
+.theme-controls{position:fixed;top:14px;right:18px;z-index:50;display:flex;gap:3px;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 14px rgba(0,0,0,.08)}
+.theme-controls[hidden]{display:none}
+.theme-controls button{appearance:none;min-height:40px;padding:7px 12px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);font:600 14px/1.3 var(--sans);cursor:pointer}
+.theme-controls button:hover{background:var(--surface2);color:var(--text)}
+.theme-controls button[aria-pressed="true"]{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
+.theme-controls button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+header.hero{padding-top:94px}
+@media(max-width:600px){.theme-controls{right:14px}.theme-controls button{padding:7px 10px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.lnb,.lnb-overlay{transition:none}}
