@@ -130,24 +130,23 @@
   }
 
 .table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--border);border-radius:10px}table{border-collapse:collapse;width:100%;font-size:14px;min-width:550px}th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}th{background:var(--surface2);color:var(--accent2)}td code{overflow-wrap:anywhere}h2,h3{scroll-margin-top:24px}.toc{background:var(--surface);padding:20px 24px;border:1px solid var(--border);border-radius:12px}.toc ol{padding-left:20px}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.stat{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.stat b{display:block;font-size:27px;color:var(--accent2)}.stat span{font-size:13px;color:var(--muted)}@media(max-width:600px){.stat-grid{gap:6px}.stat{padding:10px}.stat b{font-size:23px}.table-wrap{max-width:100%}}
-.tc{border:1px solid var(--border);border-radius:12px;padding:4px 20px 18px;margin:20px 0;background:var(--surface)}.tc h3{margin-top:18px;overflow-wrap:anywhere}.tc-meta{font-size:13px;color:var(--muted)}dt{font-weight:700;color:var(--accent2);margin-top:12px}dd{margin:4px 0 0}section{scroll-margin-top:25px}</style><link rel="stylesheet" href="lnb.css"><link rel="stylesheet" href="editorial.css?v=20260924-2">
+.tc{border:1px solid var(--border);border-radius:12px;padding:4px 20px 18px;margin:20px 0;background:var(--surface)}.tc h3{margin-top:18px;overflow-wrap:anywhere}.tc-meta{font-size:13px;color:var(--muted)}dt{font-weight:700;color:var(--accent2);margin-top:12px}dd{margin:4px 0 0}section{scroll-margin-top:25px}</style><link rel="stylesheet" href="lnb.css?v=20260926-2"><link rel="stylesheet" href="editorial.css?v=20260924-2">
 <link rel="stylesheet" href="theme.css?v=20260926-1">
 </head><body><a class="skip-link" href="#content">본문으로 이동</a><button class="nav-toggle" aria-label="메뉴 열기" onclick="openNav()">☰</button>
 <div class="lnb-overlay" id="lnbOverlay" onclick="closeNav()"></div>
 <nav class="lnb" id="lnb" aria-label="사이트 내비게이션"><button class="close" aria-label="메뉴 닫기" onclick="closeNav()">×</button><div class="brand">Taeik's Dev Log</div><a class="home" href="index.html">홈</a>
-<details class="nav-group" data-nav-group="testcases" data-default-open="true" open><summary>테스트케이스 관리 (TC)</summary><ul>
+<div class="nav-group"><h2 class="nav-group-title">테스트케이스 관리 (TC)</h2><ul>
 <li><a class="active" aria-current="page" href="lomastore-testcases.html">로마스토어 테스트케이스 29개: 범위와 기대 결과<span class="date">2026-09-22</span></a></li>
 <li><a href="testcase-management.html">테스트 명세를 자동화 실행에 연결하는 방법<span class="date">2026-07-13</span></a></li>
 <li><a href="testcase-cicd.html">테스트케이스 변경을 검증하는 CI 운영 구조<span class="date">2026-07-30</span></a></li>
-</ul></details>
-<details class="nav-group" data-nav-group="engine" data-default-open="false"><summary>자동화 엔진</summary><ul>
+</ul></div>
+<div class="nav-group"><h2 class="nav-group-title">자동화 엔진</h2><ul>
 <li><a href="lomastore-popup-handling.html">이벤트 팝업으로 막힌 테스트: 원인 분석과 대응<span class="date">2026-09-24</span></a></li>
 <li><a href="lomastore-e2e-redesign.html">로마스토어 E2E 재설계: 노출 확인에서 결과 검증으로<span class="date">2026-09-08</span></a></li>
 <li><a href="test-automation-engine.html">YAML 시나리오를 실행하는 Playwright 엔진 설계<span class="date">2026-07-13</span></a></li>
 <li><a href="self-healing-locator.html">셀렉터 변경에 대비하는 감지와 기록 구조<span class="date">2026-07-27</span></a></li>
-</ul></details>
+</ul></div>
 </nav>
-<script src="navigation.js?v=20260926-1"></script>
 <div class="theme-controls" role="group" aria-label="화면 테마" hidden>
   <button type="button" data-theme-choice="system" aria-pressed="true" title="시스템 설정에 자동으로 맞춤">시스템</button>
   <button type="button" data-theme-choice="light" aria-pressed="false" title="밝은 기본 테마">기본</button>
